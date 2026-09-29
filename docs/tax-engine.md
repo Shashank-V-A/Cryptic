@@ -11,35 +11,43 @@
 
 `packages/tax-engine`
 
-## Registered rule sets (draft)
+## Official verification (2026-09-29)
+
+Encoded rates were verified against published Income Tax Department section text **before** implementation:
+
+| Provision | Rate / rule | Official source |
+|-----------|-------------|-----------------|
+| s.115BBH(1)(a) | 30% on income from transfer of VDA | https://www.incometaxindia.gov.in/w/section-115bbh |
+| s.115BBH(2)(a) | Only cost of acquisition deductible | same |
+| s.115BBH(2)(b) | No set-off / carry-forward of VDA loss | same |
+| s.194S(1) | TDS 1% of consideration | https://www.incometaxindia.gov.in/w/section-194s-4 |
+| s.194S(3) | Threshold ₹50,000 (specified person) / ₹10,000 (others) | same |
+| Health & Education Cess | 4% on income-tax + surcharge | https://www.incometaxindia.gov.in/w/tax-rates |
+
+**Out of scope of Estimated VDA Tax:** surcharge (needs total income), Final Total Income-Tax Liability, Schedule VDA utility export (`filingReady=false` until ITR schema verified).
+
+## Registered rule sets
 
 | ID | FY | Status |
 |----|----|--------|
-| `FY_2025_26_v1` | FY 2025–26 | Draft — verify before production |
-| `FY_2026_27_v1` | FY 2026–27 | Draft — verify before production |
+| `FY_2024_25_v1` | FY 2024–25 | Statutory rates verified · estimate scope |
+| `FY_2025_26_v1` | FY 2025–26 | Statutory rates verified · estimate scope |
+| `FY_2026_27_v1` | FY 2026–27 | Statutory rates verified · estimate scope |
 
-Draft rates currently mirror historically discussed VDA special rate (30%) + cess/TDS parameters as placeholders. **These are not filing authority.**
+## API
 
-## Official sources to verify before production
-
-Before enabling production tax calculations for a financial year, verify against:
-
-- Income Tax Department: https://www.incometax.gov.in  
-- Applicable Finance Act / Budget notifications for that FY  
-- Section 115BBH (VDA taxation) and related provisions as amended  
-- Section 194S (TDS on VDA) parameters for the FY  
-- Current ITR schema / Schedule VDA utilities for the assessment year  
-
-Document the exact circular/notification/utility version in `TaxRule.officialSource` when verified, and set `isDraft: false`.
-
-## API surface (Phase 5+)
-
-```js
-getTaxRuleSet(financialYear)
-calculateVdaTax({ transactions, lots, financialYear, tdsRecords, ruleSetId })
 ```
-
-Phase 1: `calculateVdaTax` throws intentionally.
+GET  /api/tax?financialYear=
+GET  /api/tax/:financialYear
+POST /api/tax/:financialYear/calculate
+GET  /api/tax/transactions/:id/breakdown
+GET  /api/tax/transactions/:id/why
+GET  /api/tax/rules
+GET  /api/tax/audit
+GET  /api/tds
+POST /api/tds/records
+POST /api/tds/reconcile
+```
 
 ## Disclaimers
 

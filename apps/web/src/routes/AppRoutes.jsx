@@ -13,6 +13,7 @@ import { SipsPage } from '../pages/sips/SipsPage.jsx';
 import { TaxCenterPage } from '../pages/tax/TaxCenterPage.jsx';
 import { TaxYearPage } from '../pages/tax/TaxYearPage.jsx';
 import { TaxSimulatorPage } from '../pages/tax/TaxSimulatorPage.jsx';
+import { TaxWhyPage } from '../pages/tax/TaxWhyPage.jsx';
 import { TdsPage } from '../pages/tds/TdsPage.jsx';
 import { ReconciliationPage } from '../pages/reconciliation/ReconciliationPage.jsx';
 import { ReportsPage } from '../pages/reports/ReportsPage.jsx';
@@ -39,6 +40,7 @@ export function AppRoutes() {
           <Route path="/sips" element={<SipsPage />} />
           <Route path="/tax" element={<TaxCenterPage />} />
           <Route path="/tax/simulator" element={<TaxSimulatorPage />} />
+          <Route path="/tax/why/:transactionId" element={<TaxWhyPage />} />
           <Route path="/tax/:financialYear" element={<TaxYearPage />} />
           <Route path="/tds" element={<TdsPage />} />
           <Route path="/reconciliation" element={<ReconciliationPage />} />

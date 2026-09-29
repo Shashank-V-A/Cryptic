@@ -34,12 +34,18 @@ export function DashboardPage() {
     queryFn: () => apiFetch('/api/portfolio/performance?days=120'),
   });
 
+  const { data: tax } = useQuery({
+    queryKey: ['tax-center', financialYear],
+    queryFn: () => apiFetch(`/api/tax?financialYear=${financialYear}`),
+  });
+
   const { data: txns } = useQuery({
     queryKey: ['transactions', { limit: 5 }],
     queryFn: () => apiFetch('/api/transactions?limit=5'),
   });
 
   const s = portfolio?.summary;
+  const taxSummary = tax?.latestCalculation?.summary;
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 animate-fade-in sm:space-y-6">
@@ -95,13 +101,30 @@ export function DashboardPage() {
           <PortfolioPerformanceChart points={performance?.points || []} />
         </ChartCard>
 
-        <ChartCard title="Tax summary" subtitle="Estimated VDA Tax — Phase 5 engine">
+        <ChartCard title="Tax summary" subtitle="Estimated VDA Tax — versioned TaxRuleSet">
           <dl className="space-y-3 text-sm">
             {[
-              ['VDA Income', '—'],
-              ['Estimated VDA Tax', '—'],
-              ['TDS Already Deducted', '—'],
-              ['Estimated Remaining', '—'],
+              ['VDA Income', taxSummary?.vdaIncomeInr != null ? formatInr(taxSummary.vdaIncomeInr) : '—'],
+              [
+                'Estimated VDA Tax',
+                taxSummary?.estimatedVdaTaxInr != null
+                  ? formatInr(taxSummary.estimatedVdaTaxInr)
+                  : '—',
+              ],
+              [
+                'TDS Already Deducted',
+                taxSummary?.tdsDeductedInr != null
+                  ? formatInr(taxSummary.tdsDeductedInr)
+                  : tax?.tdsDeductedInr
+                    ? formatInr(tax.tdsDeductedInr)
+                    : '—',
+              ],
+              [
+                'Estimated Remaining',
+                taxSummary?.estimatedRemainingInr != null
+                  ? formatInr(taxSummary.estimatedRemainingInr)
+                  : '—',
+              ],
             ].map(([k, v]) => (
               <div
                 key={k}
