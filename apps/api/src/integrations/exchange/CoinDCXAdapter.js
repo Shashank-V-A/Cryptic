@@ -145,7 +145,10 @@ export class CoinDCXAdapter extends ExchangeAdapter {
 
   async getTrades({ fromId, limit = 500, fromTimestamp, toTimestamp, symbol } = {}) {
     const body = { limit: Math.min(Number(limit) || 500, 500), sort: 'asc' };
-    if (fromId != null) body.from_id = Number(fromId);
+    if (fromId != null && fromId !== '') {
+      const n = Number(fromId);
+      body.from_id = Number.isSafeInteger(n) ? n : fromId;
+    }
     if (fromTimestamp != null) body.from_timestamp = Number(fromTimestamp);
     if (toTimestamp != null) body.to_timestamp = Number(toTimestamp);
     if (symbol) body.symbol = symbol;

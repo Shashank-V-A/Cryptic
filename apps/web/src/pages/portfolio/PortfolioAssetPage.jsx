@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { LoadingState, ErrorState, MetricCard, StatusBadge } from '@vda-ledger/ui';
 import { apiFetch } from '../../lib/api.js';
-import { formatInr, formatQty, formatPct, relativeTime } from '../../lib/format.js';
+import { formatInr, formatQty, formatPct, relativeTime, moneySign } from '../../lib/format.js';
 import { ChartCard } from '../../components/charts/ChartCard.jsx';
 import { PriceChart } from '../../components/charts/PriceChart.jsx';
 
@@ -49,7 +49,7 @@ export function PortfolioAssetPage() {
         <MetricCard
           label="Realized P&L"
           value={formatInr(data.realizedPnlInr)}
-          tone={Number(data.realizedPnlInr) >= 0 ? 'positive' : 'negative'}
+          tone={moneySign(data.realizedPnlInr) >= 0 ? 'positive' : 'negative'}
         />
         <MetricCard
           label="Unrealized P&L"
@@ -61,7 +61,7 @@ export function PortfolioAssetPage() {
           tone={
             !data.priceAvailable
               ? 'default'
-              : Number(data.unrealizedPnlInr) >= 0
+              : moneySign(data.unrealizedPnlInr) >= 0
                 ? 'positive'
                 : 'negative'
           }

@@ -1,18 +1,11 @@
+import { useEffect, useRef } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard,
   Briefcase,
   ArrowLeftRight,
-  CalendarClock,
   Landmark,
-  Receipt,
-  Scale,
-  FileText,
-  FlaskConical,
   Settings,
-  Shield,
-  Menu,
-  X,
 } from 'lucide-react';
 import { Sidebar } from './Sidebar.jsx';
 import { Topbar } from './Topbar.jsx';
@@ -28,29 +21,51 @@ const MOBILE_NAV = [
 
 export function AppShell() {
   const { sidebarCollapsed, mobileNavOpen, setMobileNavOpen } = useUiStore();
+  const drawerRef = useRef(null);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setMobileNavOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    const firstLink = drawerRef.current?.querySelector?.('a, button');
+    firstLink?.focus?.();
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mobileNavOpen, setMobileNavOpen]);
 
   return (
     <div className="min-h-screen bg-[var(--vda-cream)] paper-texture paper-crease">
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
       <div className="flex min-h-screen">
-        <Sidebar
-          collapsed={sidebarCollapsed}
-          mobileOpen={mobileNavOpen}
-          onCloseMobile={() => setMobileNavOpen(false)}
-        />
+        <div ref={drawerRef}>
+          <Sidebar
+            collapsed={sidebarCollapsed}
+            mobileOpen={mobileNavOpen}
+            onCloseMobile={() => setMobileNavOpen(false)}
+          />
+        </div>
 
         <div
           className={`flex min-w-0 flex-1 flex-col transition-[margin] duration-300 ${
-            sidebarCollapsed ? 'lg:ml-[var(--vda-sidebar-collapsed)]' : 'lg:ml-[var(--vda-sidebar-width)]'
+            sidebarCollapsed
+              ? 'lg:ml-[var(--vda-sidebar-collapsed)]'
+              : 'lg:ml-[var(--vda-sidebar-width)]'
           }`}
         >
           <Topbar onOpenMobile={() => setMobileNavOpen(true)} />
-          <main className="flex-1 px-4 pb-24 pt-4 sm:px-6 lg:px-8 lg:pb-8">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="flex-1 px-4 pb-24 pt-4 sm:px-6 lg:px-8 lg:pb-8"
+          >
             <Outlet />
           </main>
         </div>
       </div>
 
-      {/* Mobile bottom nav */}
       <nav
         aria-label="Mobile"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--vda-border)] bg-[var(--vda-surface)]/95 backdrop-blur lg:hidden"
@@ -61,7 +76,7 @@ export function AppShell() {
               <NavLink
                 to={to}
                 className={({ isActive }) =>
-                  `flex flex-col items-center gap-1 px-1 py-2 text-[10px] ${
+                  `flex flex-col items-center gap-1 px-1 py-2.5 text-[10px] ${
                     isActive ? 'text-[var(--vda-green)]' : 'text-[var(--vda-ink-muted)]'
                   }`
                 }
@@ -85,5 +100,3 @@ export function AppShell() {
     </div>
   );
 }
-
-export { Menu, X };

@@ -15,24 +15,47 @@ function optional(name, fallback = '') {
   return process.env[name] ?? fallback;
 }
 
+const DEV_SESSION_SECRET = 'dev-only-session-secret-change-me-32c';
+const DEV_ENCRYPTION_KEY =
+  '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
 export function loadApiConfig(env = process.env) {
   const previous = process.env;
   process.env = env;
   try {
+    const nodeEnv = optional('NODE_ENV', 'development');
+    const isProd = nodeEnv === 'production';
+
+    if (isProd) {
+      if (!env.SESSION_SECRET || env.SESSION_SECRET === DEV_SESSION_SECRET) {
+        throw new Error('SESSION_SECRET must be set to a strong unique value in production');
+      }
+      if (!env.ENCRYPTION_KEY || env.ENCRYPTION_KEY === DEV_ENCRYPTION_KEY) {
+        throw new Error('ENCRYPTION_KEY must be set to a strong unique value in production');
+      }
+      if (!env.DATABASE_URL) {
+        throw new Error('DATABASE_URL is required in production');
+      }
+      if (optional('COOKIE_SECURE', 'true') !== 'true') {
+        throw new Error('COOKIE_SECURE must be true in production');
+      }
+    }
+
     return {
-      nodeEnv: optional('NODE_ENV', 'development'),
+      nodeEnv,
       port: Number(optional('API_PORT', '4000')),
-      databaseUrl: required('DATABASE_URL', 'postgresql://vda:vda_dev_password@localhost:5433/vda_ledger?schema=public'),
-      redisUrl: optional('REDIS_URL', 'redis://localhost:6379'),
-      sessionSecret: required('SESSION_SECRET', 'dev-only-session-secret-change-me-32c'),
-      cookieSecure: optional('COOKIE_SECURE', 'false') === 'true',
-      encryptionKey: required(
-        'ENCRYPTION_KEY',
-        '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      databaseUrl: required(
+        'DATABASE_URL',
+        'postgresql://vda:vda_dev_password@localhost:5433/vda_ledger?schema=public',
       ),
+      redisUrl: optional('REDIS_URL', 'redis://localhost:6379'),
+      sessionSecret: required('SESSION_SECRET', DEV_SESSION_SECRET),
+      cookieSecure: optional('COOKIE_SECURE', isProd ? 'true' : 'false') === 'true',
+      encryptionKey: required('ENCRYPTION_KEY', DEV_ENCRYPTION_KEY),
       corsOrigin: optional('CORS_ORIGIN', 'http://localhost:5173'),
       webUrl: optional('WEB_URL', 'http://localhost:5173'),
-      demoMode: optional('DEMO_MODE', 'true') === 'true',
+      demoMode: optional('DEMO_MODE', isProd ? 'false' : 'true') === 'true',
+      cookieSameSite: optional('COOKIE_SAMESITE', 'lax'),
       priceApiKey: optional('PRICE_API_KEY', ''),
       priceProvider: optional('PRICE_PROVIDER', 'coingecko'),
       coinDcxApiKey: optional('COINDCX_API_KEY', ''),

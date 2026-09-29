@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { apiFetch } from '../../lib/api.js';
+import { apiFetch, setUnauthorizedHandler } from '../../lib/api.js';
 
 const AuthContext = createContext(null);
 
@@ -7,6 +7,11 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [meta, setMeta] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const clearSession = useCallback(() => {
+    setUser(null);
+    setMeta(null);
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -18,12 +23,21 @@ export function AuthProvider({ children }) {
         disclaimers: data.disclaimers,
       });
     } catch {
-      setUser(null);
-      setMeta(null);
+      clearSession();
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [clearSession]);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      clearSession();
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        window.location.assign('/login');
+      }
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [clearSession]);
 
   useEffect(() => {
     refresh();
@@ -47,10 +61,9 @@ export function AuthProvider({ children }) {
     try {
       await apiFetch('/api/auth/logout', { method: 'POST' });
     } finally {
-      setUser(null);
-      setMeta(null);
+      clearSession();
     }
-  }, []);
+  }, [clearSession]);
 
   const value = useMemo(
     () => ({

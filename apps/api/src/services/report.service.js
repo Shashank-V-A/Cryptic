@@ -48,21 +48,16 @@ async function loadScheduleAllocations(userId, financialYear) {
   });
 
   const rows = [];
+  const warnings = [];
   for (const sell of sells) {
     const allocs = sell.lotAllocations || [];
     if (!allocs.length) {
-      rows.push({
-        sellTransactionId: sell.id,
+      // Do not invent cost of acquisition as 0 — omit from Schedule VDA and warn.
+      warnings.push({
+        code: 'MISSING_LOT_ALLOCATIONS',
+        transactionId: sell.id,
         assetSymbol: sell.asset.symbol,
-        dateOfAcquisition: sell.timestamp,
-        dateOfTransfer: sell.timestamp,
-        costOfAcquisitionInr: '0',
-        considerationReceivedInr:
-          sell.netValue?.toString() || sell.grossValue?.toString() || '0',
-        quantity: sell.quantity.toString(),
-        allocationId: null,
-        lotId: null,
-        missingLots: true,
+        message: `Sell ${sell.id} (${sell.asset.symbol}) has no lot allocations — excluded from Schedule VDA until lots are recalculated.`,
       });
       continue;
     }
@@ -82,7 +77,7 @@ async function loadScheduleAllocations(userId, financialYear) {
       });
     }
   }
-  return rows;
+  return { rows, warnings };
 }
 
 async function loadTransferInputs(userId, financialYear) {
@@ -183,7 +178,8 @@ export const reportService = {
     });
 
     try {
-      const scheduleAllocations = await loadScheduleAllocations(userId, financialYear);
+      const { rows: scheduleAllocations, warnings: lotWarnings } =
+        await loadScheduleAllocations(userId, financialYear);
       const { transfers, tdsDeductedInr, calculationId } = await loadTransferInputs(
         userId,
         financialYear,
@@ -208,9 +204,12 @@ export const reportService = {
           recordedTds,
         });
         payload.taxCalculationId = calculationId;
+        payload.lotWarnings = lotWarnings;
       } else if (type === 'SCHEDULE_VDA') {
         const schedule = buildScheduleVda(scheduleAllocations);
         const validation = validateScheduleVda(schedule, { financialYear });
+        validation.warnings = [...(validation.warnings || []), ...lotWarnings];
+        if (lotWarnings.length) validation.ok = validation.ok && true; // warnings only — rows omitted
         payload = {
           reportType: 'SCHEDULE_VDA',
           reportEngineVersion: REPORT_ENGINE_VERSION,
@@ -220,6 +219,7 @@ export const reportService = {
           assessmentYear: financialYearToAssessmentYear(financialYear),
           scheduleVda: schedule,
           scheduleValidation: validation,
+          lotWarnings,
           transactionTrail: schedule.rows.map((r) => ({ serialNo: r.serialNo, ...r._trace })),
           disclaimer:
             'Schedule VDA structured data prepared from official ITR-2 column definitions. Not a certified e-filing package.',
@@ -232,6 +232,13 @@ export const reportService = {
           scheduleAllocations,
         });
         payload.taxCalculationId = calculationId;
+        payload.lotWarnings = lotWarnings;
+        if (payload.validation) {
+          payload.validation.warnings = [
+            ...(payload.validation.warnings || []),
+            ...lotWarnings,
+          ];
+        }
       } else if (type === 'TDS_RECONCILIATION') {
         const recon = await tdsService.reconcile(userId, financialYear, { payerKind });
         payload = {

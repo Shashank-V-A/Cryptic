@@ -1,11 +1,14 @@
 import { Link, useParams } from 'react-router-dom';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LoadingState, ErrorState, StatusBadge, MetricCard } from '@vda-ledger/ui';
-import { apiFetch } from '../../lib/api.js';
+import { apiFetch, downloadApiFile } from '../../lib/api.js';
 import { formatInr } from '../../lib/format.js';
 
 export function ReportDetailPage() {
   const { id } = useParams();
+  const [downloadError, setDownloadError] = useState('');
+  const [downloading, setDownloading] = useState(null);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['report', id],
@@ -23,6 +26,7 @@ export function ReportDetailPage() {
   const validation = p.scheduleValidation || p.validation;
   const scheduleRows = p.scheduleVda?.rows || [];
   const trail = p.transactionTrail || [];
+  const lotWarnings = p.lotWarnings || [];
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 animate-fade-in sm:space-y-6">
@@ -47,24 +51,72 @@ export function ReportDetailPage() {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {data.hasPdf ? (
-          <a
-            href={`/api/reports/${id}/download.pdf`}
-            className="rounded-[var(--vda-radius-pill)] bg-[var(--vda-ink)] px-4 py-2 text-sm text-white"
+      <div className="flex flex-wrap items-center gap-2">
+        {data.status === 'READY' && data.hasPdf ? (
+          <button
+            type="button"
+            disabled={downloading === 'pdf'}
+            onClick={async () => {
+              setDownloadError('');
+              setDownloading('pdf');
+              try {
+                await downloadApiFile(
+                  `/api/reports/${id}/download.pdf`,
+                  `vda-ledger-${data.type}-${data.financialYear}.pdf`,
+                );
+              } catch (err) {
+                setDownloadError(err.message || 'PDF download failed');
+              } finally {
+                setDownloading(null);
+              }
+            }}
+            className="rounded-[var(--vda-radius-pill)] bg-[var(--vda-ink)] px-4 py-2 text-sm text-white disabled:opacity-60"
           >
-            Download PDF
-          </a>
+            {downloading === 'pdf' ? 'Downloading…' : 'Download PDF'}
+          </button>
         ) : null}
-        <a
-          href={`/api/reports/${id}/download.json`}
-          className="rounded-[var(--vda-radius-pill)] border border-[var(--vda-border)] bg-[var(--vda-surface)] px-4 py-2 text-sm"
-        >
-          Download JSON
-        </a>
+        {data.status === 'READY' ? (
+          <button
+            type="button"
+            disabled={downloading === 'json'}
+            onClick={async () => {
+              setDownloadError('');
+              setDownloading('json');
+              try {
+                await downloadApiFile(
+                  `/api/reports/${id}/download.json`,
+                  `vda-ledger-${data.type}-${data.financialYear}.json`,
+                );
+              } catch (err) {
+                setDownloadError(err.message || 'JSON download failed');
+              } finally {
+                setDownloading(null);
+              }
+            }}
+            className="rounded-[var(--vda-radius-pill)] border border-[var(--vda-border)] bg-[var(--vda-surface)] px-4 py-2 text-sm disabled:opacity-60"
+          >
+            {downloading === 'json' ? 'Downloading…' : 'Download JSON'}
+          </button>
+        ) : null}
+        {downloadError ? (
+          <p role="alert" className="text-sm text-[var(--vda-negative)]">
+            {downloadError}
+          </p>
+        ) : null}
       </div>
 
-      {summary.estimatedVdaTaxInr || summary.vdaIncomeInr ? (
+      {data.status === 'FAILED' ? (
+        <section className="scrapbook-panel border-[var(--vda-negative)]/30 p-4 sm:p-5" role="alert">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--vda-negative)]">
+            Report failed
+          </h2>
+          <p className="mt-2 text-sm text-[var(--vda-ink-soft)]">
+            {p.error?.message || p.error || 'Generation failed. No downloadable artefacts were produced.'}
+          </p>
+        </section>
+      ) : null}
+
+      {data.status === 'READY' && (summary.estimatedVdaTaxInr || summary.vdaIncomeInr) ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
           <MetricCard
             label="VDA Income"
@@ -89,6 +141,23 @@ export function ReportDetailPage() {
             value={String(data.transactions?.length || 0)}
           />
         </div>
+      ) : null}
+
+      {lotWarnings.length ? (
+        <section className="scrapbook-panel border-[var(--vda-warning)]/40 p-4 sm:p-5" role="status">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--vda-warning)]">
+            Cost-basis gaps
+          </h2>
+          <p className="mt-1 text-xs text-[var(--vda-ink-muted)]">
+            These sells were omitted from Schedule VDA because acquisition lots could not be matched.
+            No cost of zero was invented.
+          </p>
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-[var(--vda-ink-soft)]">
+            {lotWarnings.map((w, i) => (
+              <li key={i}>{w.message || w}</li>
+            ))}
+          </ul>
+        </section>
       ) : null}
 
       {validation ? (

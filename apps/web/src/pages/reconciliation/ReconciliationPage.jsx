@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { LoadingState, ErrorState, StatusBadge, MetricCard } from '@vda-ledger/ui';
+import { LoadingState, ErrorState, EmptyState, StatusBadge, MetricCard } from '@vda-ledger/ui';
 import { apiFetch } from '../../lib/api.js';
 import { formatQty } from '../../lib/format.js';
 
@@ -103,6 +103,13 @@ export function ReconciliationPage() {
         <ErrorState title="Reconciliation unavailable" description={error.message} onRetry={refetch} />
       ) : null}
 
+      {!isLoading && !error && !latest ? (
+        <EmptyState
+          title="No reconciliation runs yet"
+          description="Run a check against your ledger or a connected exchange. Mismatches are never auto-corrected."
+        />
+      ) : null}
+
       {latest ? (
         <>
           <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
@@ -156,6 +163,7 @@ export function ReconciliationPage() {
                         <div className="flex flex-col gap-1">
                           <textarea
                             rows={2}
+                            aria-label={`Investigation notes for ${i.assetSymbol}`}
                             className="w-full min-w-[12rem] rounded border border-[var(--vda-border)] bg-[var(--vda-surface)] px-2 py-1 text-xs"
                             placeholder="Investigation notes…"
                             value={notesDraft[i.id] ?? i.investigationNotes ?? ''}

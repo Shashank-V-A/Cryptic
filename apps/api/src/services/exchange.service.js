@@ -325,9 +325,7 @@ export const exchangeService = {
       const adapter = await this.getAdapterForConnection(run.connection);
       await adapter.connect();
 
-      const fromId = run.connection.lastTradeCursor
-        ? Number(run.connection.lastTradeCursor)
-        : null;
+      const fromId = run.connection.lastTradeCursor || null;
       const normalized = await adapter.getTransactions({ fromId });
 
       const existing = await transactionRepository.findExternalIds(run.userId);

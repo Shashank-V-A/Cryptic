@@ -61,6 +61,9 @@ export function TaxCenterPage() {
           <StatusBadge tone={data?.ruleSet?.filingReady ? 'success' : 'warning'}>
             {data?.ruleSet?.filingReady ? 'Filing ready' : 'Estimate only'}
           </StatusBadge>
+          {data?.calculationStale || data?.latestCalculation?.stale ? (
+            <StatusBadge tone="warning">Recalculate needed</StatusBadge>
+          ) : null}
         </div>
       </div>
 

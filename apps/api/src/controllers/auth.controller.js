@@ -53,7 +53,12 @@ export const authController = {
       token: req.cookies?.[COOKIE_NAME],
       ipAddress: req.ip,
     });
-    res.clearCookie(COOKIE_NAME, { path: '/' });
+    res.clearCookie(COOKIE_NAME, {
+      path: '/',
+      httpOnly: true,
+      secure: config.cookieSecure,
+      sameSite: 'lax',
+    });
     res.json({ ok: true });
   }),
 };

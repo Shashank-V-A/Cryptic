@@ -9,7 +9,7 @@ import {
   StatusBadge,
 } from '@vda-ledger/ui';
 import { apiFetch } from '../../lib/api.js';
-import { formatInr, formatQty, formatPct, relativeTime } from '../../lib/format.js';
+import { formatInr, formatQty, formatPct, relativeTime, moneySign } from '../../lib/format.js';
 import { ChartCard } from '../../components/charts/ChartCard.jsx';
 import { PortfolioPerformanceChart } from '../../components/charts/PortfolioPerformanceChart.jsx';
 import { AllocationChart } from '../../components/charts/AllocationChart.jsx';
@@ -73,7 +73,7 @@ export function PortfolioPage() {
         <MetricCard
           label="Realized P&L"
           value={formatInr(s.realizedPnl)}
-          tone={Number(s.realizedPnl) >= 0 ? 'positive' : 'negative'}
+          tone={moneySign(s.realizedPnl) >= 0 ? 'positive' : 'negative'}
         />
         <MetricCard
           label="Unrealized P&L"
@@ -81,7 +81,7 @@ export function PortfolioPage() {
           tone={
             s.unrealizedPnl == null
               ? 'default'
-              : Number(s.unrealizedPnl) >= 0
+              : moneySign(s.unrealizedPnl) >= 0
                 ? 'positive'
                 : 'negative'
           }
@@ -149,7 +149,7 @@ export function PortfolioPage() {
                     <dd>
                       {h.priceAvailable ? (
                         <ProfitLoss
-                          value={Number(h.unrealizedPnlInr)}
+                          value={h.unrealizedPnlInr}
                           formatted={formatInr(h.unrealizedPnlInr)}
                         />
                       ) : (
@@ -203,7 +203,7 @@ export function PortfolioPage() {
                       {h.priceAvailable ? (
                         <span className="inline-flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
                           <ProfitLoss
-                            value={Number(h.unrealizedPnlInr)}
+                            value={h.unrealizedPnlInr}
                             formatted={formatInr(h.unrealizedPnlInr)}
                           />
                           <span className="text-xs text-[var(--vda-ink-muted)]">

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LoadingState, ErrorState, StatusBadge } from '@vda-ledger/ui';
-import { apiFetch } from '../../lib/api.js';
+import { apiFetch, downloadApiFile } from '../../lib/api.js';
 import { useAuth } from '../../features/auth/AuthProvider.jsx';
 import { useUiStore } from '../../stores/uiStore.js';
 import { FinancialYearSelector } from '../../components/forms/FinancialYearSelector.jsx';
@@ -46,6 +46,8 @@ export function ReportsPage() {
   const financialYear = useUiStore((s) => s.financialYear);
   const setFinancialYear = useUiStore((s) => s.setFinancialYear);
   const [selectedType, setSelectedType] = useState('CRYPTO_TAX');
+  const [downloadError, setDownloadError] = useState('');
+  const [downloadingId, setDownloadingId] = useState(null);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['reports'],
@@ -138,6 +140,11 @@ export function ReportsPage() {
         {error ? (
           <ErrorState title="Reports unavailable" description={error.message} onRetry={refetch} />
         ) : null}
+        {downloadError ? (
+          <p role="alert" className="mt-2 text-sm text-[var(--vda-negative)]">
+            {downloadError}
+          </p>
+        ) : null}
         <ul className="mt-3 space-y-2 text-sm">
           {(data?.items || []).map((r) => (
             <li
@@ -166,12 +173,27 @@ export function ReportsPage() {
                   {r.status}
                 </StatusBadge>
                 {r.hasPdf && r.status === 'READY' ? (
-                  <a
-                    href={`/api/reports/${r.id}/download.pdf`}
-                    className="text-xs text-[var(--vda-green)]"
+                  <button
+                    type="button"
+                    disabled={downloadingId === r.id}
+                    onClick={async () => {
+                      setDownloadError('');
+                      setDownloadingId(r.id);
+                      try {
+                        await downloadApiFile(
+                          `/api/reports/${r.id}/download.pdf`,
+                          `vda-ledger-${r.type}-${r.financialYear}.pdf`,
+                        );
+                      } catch (err) {
+                        setDownloadError(err.message || 'PDF download failed');
+                      } finally {
+                        setDownloadingId(null);
+                      }
+                    }}
+                    className="text-xs text-[var(--vda-green)] disabled:opacity-60"
                   >
-                    PDF
-                  </a>
+                    {downloadingId === r.id ? '…' : 'PDF'}
+                  </button>
                 ) : null}
               </div>
             </li>

@@ -17,7 +17,7 @@ export function TaxSimulatorPage() {
       </p>
 
       <form
-        className="grid gap-4 rounded-[var(--vda-radius-lg)] border border-[var(--vda-border)] bg-[var(--vda-surface)] p-5 sm:grid-cols-3"
+        className="scrapbook-panel grid gap-4 p-5 sm:grid-cols-3"
         onSubmit={(e) => e.preventDefault()}
       >
         <label className="text-sm">

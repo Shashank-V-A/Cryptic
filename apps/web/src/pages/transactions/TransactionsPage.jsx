@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { StatusBadge, LoadingState, EmptyState, ErrorState } from '@vda-ledger/ui';
 import { apiFetch } from '../../lib/api.js';
+import { formatInr } from '../../lib/format.js';
 import { useUiStore } from '../../stores/uiStore.js';
 
 const TYPE_FILTERS = [
@@ -18,17 +19,6 @@ const TYPE_FILTERS = [
   'SWAP',
   'UNKNOWN',
 ];
-
-function formatInr(v) {
-  if (v === null || v === undefined || v === '') return '—';
-  const n = Number(v);
-  if (Number.isNaN(n)) return v;
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 2,
-  }).format(n);
-}
 
 export function TransactionsPage() {
   const queryClient = useQueryClient();
@@ -74,6 +64,9 @@ export function TransactionsPage() {
       setShowImport(false);
       await queryClient.invalidateQueries({ queryKey: ['transactions'] });
       await queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+      await queryClient.invalidateQueries({ queryKey: ['tax-center'] });
+      await queryClient.invalidateQueries({ queryKey: ['tds'] });
+      await queryClient.invalidateQueries({ queryKey: ['reports'] });
     },
   });
 
@@ -94,14 +87,12 @@ export function TransactionsPage() {
           >
             Import CSV
           </button>
-          <button
-            type="button"
-            disabled
-            title="Live sync is Phase 8 — not faked"
-            className="rounded-[var(--vda-radius-pill)] border border-[var(--vda-border)] bg-[var(--vda-surface)] px-4 py-2 text-sm text-[var(--vda-ink-muted)]"
+          <Link
+            to="/settings/exchanges"
+            className="rounded-[var(--vda-radius-pill)] border border-[var(--vda-border)] bg-[var(--vda-surface)] px-4 py-2 text-sm"
           >
-            Sync Exchange — coming soon
-          </button>
+            Sync Exchange
+          </Link>
         </div>
       </div>
 
@@ -122,12 +113,15 @@ export function TransactionsPage() {
         ))}
       </div>
 
-      <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Search asset, external id, notes…"
-        className="w-full max-w-md rounded-[var(--vda-radius)] border border-[var(--vda-border)] bg-[var(--vda-surface)] px-3 py-2 text-sm"
-      />
+      <label className="block w-full max-w-md text-sm">
+        <span className="sr-only">Search transactions</span>
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search asset, external id, notes…"
+          className="w-full rounded-[var(--vda-radius)] border border-[var(--vda-border)] bg-[var(--vda-surface)] px-3 py-2 text-sm"
+        />
+      </label>
 
       {isLoading ? <LoadingState label="Loading ledger…" /> : null}
       {error ? <ErrorState title="Could not load transactions" description={error.message} onRetry={refetch} /> : null}
@@ -213,13 +207,16 @@ export function TransactionsPage() {
               Headers: timestamp, asset, type, quantity, price, fee, external_id (CoinDCX-like columns also accepted).
               Original rows are preserved. Duplicates are never inserted.
             </p>
-            <textarea
-              value={csvText}
-              onChange={(e) => setCsvText(e.target.value)}
-              rows={10}
-              className="mt-3 w-full rounded-[var(--vda-radius)] border border-[var(--vda-border)] bg-[var(--vda-paper)] p-3 font-mono text-xs"
-              placeholder="Paste CSV…"
-            />
+            <label className="mt-3 block text-sm">
+              <span className="sr-only">CSV data to import</span>
+              <textarea
+                value={csvText}
+                onChange={(e) => setCsvText(e.target.value)}
+                rows={10}
+                className="w-full rounded-[var(--vda-radius)] border border-[var(--vda-border)] bg-[var(--vda-paper)] p-3 font-mono text-xs"
+                placeholder="Paste CSV…"
+              />
+            </label>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
@@ -243,7 +240,14 @@ export function TransactionsPage() {
               ) : null}
             </div>
             {previewMutation.error ? (
-              <p className="mt-2 text-sm text-[var(--vda-negative)]">{previewMutation.error.message}</p>
+              <p role="alert" className="mt-2 text-sm text-[var(--vda-negative)]">
+                {previewMutation.error.message}
+              </p>
+            ) : null}
+            {confirmMutation.error ? (
+              <p role="alert" className="mt-2 text-sm text-[var(--vda-negative)]">
+                {confirmMutation.error.message}
+              </p>
             ) : null}
             {preview ? (
               <div className="mt-4 space-y-2 text-sm">

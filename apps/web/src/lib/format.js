@@ -1,12 +1,44 @@
+/** Sign of a money string without float coercion of the full amount. */
+export function moneySign(value) {
+  if (value === null || value === undefined || value === '') return 0;
+  if (typeof value === 'number') {
+    if (Number.isNaN(value) || value === 0) return 0;
+    return value > 0 ? 1 : -1;
+  }
+  const raw = String(value).trim();
+  if (!raw || raw === '—' || raw === '-') return 0;
+  const neg = raw.startsWith('-') || /^\(.*\)$/.test(raw);
+  const digits = raw.replace(/[^0-9.]/g, '');
+  if (!digits || /^0*\.?0*$/.test(digits)) return 0;
+  return neg ? -1 : 1;
+}
+
 export function formatInr(value, { fallback = '—' } = {}) {
   if (value === null || value === undefined || value === '') return fallback;
-  const n = Number(value);
-  if (Number.isNaN(n)) return fallback;
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 2,
-  }).format(n);
+  const raw = String(value).trim();
+  if (!raw || raw === '—') return fallback;
+
+  // Prefer decimal-string path: split integer/fraction to avoid float for display grouping
+  const neg = raw.startsWith('-');
+  const abs = neg ? raw.slice(1) : raw.replace(/^\+/, '');
+  if (!/^-?\d+(\.\d+)?$/.test(neg ? raw : abs) && Number.isNaN(Number(raw))) {
+    return fallback;
+  }
+
+  const [intPart = '0', frac = ''] = abs.split('.');
+  const frac2 = (frac + '00').slice(0, 2);
+  const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  // Indian grouping via Intl on the integer part only (safe for display-sized ints)
+  let indianInt = grouped;
+  try {
+    const n = Number(intPart);
+    if (Number.isSafeInteger(n)) {
+      indianInt = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n);
+    }
+  } catch {
+    // keep grouped
+  }
+  return `${neg ? '-' : ''}₹${indianInt}.${frac2}`;
 }
 
 export function formatQty(value, digits = 8) {
@@ -20,10 +52,12 @@ export function formatQty(value, digits = 8) {
 
 export function formatPct(value) {
   if (value == null || value === '') return '—';
-  const n = Number(value);
+  const sign = moneySign(value);
+  const raw = String(value).replace(/[^0-9.\-]/g, '');
+  const n = Number(raw);
   if (Number.isNaN(n)) return '—';
-  const sign = n > 0 ? '+' : '';
-  return `${sign}${n.toFixed(2)}%`;
+  const prefix = sign > 0 ? '+' : '';
+  return `${prefix}${n.toFixed(2)}%`;
 }
 
 export function relativeTime(seconds) {

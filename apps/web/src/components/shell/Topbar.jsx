@@ -28,6 +28,9 @@ export function Topbar({ onOpenMobile }) {
         queryClient.invalidateQueries({ queryKey: ['portfolio-performance'] }),
         queryClient.invalidateQueries({ queryKey: ['transactions'] }),
         queryClient.invalidateQueries({ queryKey: ['portfolio-asset'] }),
+        queryClient.invalidateQueries({ queryKey: ['tax-center'] }),
+        queryClient.invalidateQueries({ queryKey: ['tds'] }),
+        queryClient.invalidateQueries({ queryKey: ['reports'] }),
       ]);
       setDemoStatus('done');
       setDemoMessage(
@@ -99,11 +102,12 @@ export function Topbar({ onOpenMobile }) {
         />
         <button
           type="button"
-          className="rounded-md border border-[var(--vda-border)] bg-[var(--vda-surface)] p-2 text-[var(--vda-ink-muted)]"
-          aria-label="Notifications"
+          disabled
+          className="cursor-not-allowed rounded-md border border-[var(--vda-border)] bg-[var(--vda-surface)] p-2 text-[var(--vda-ink-faint)] opacity-60"
+          aria-label="Notifications unavailable"
           title="Notifications — coming in a later phase"
         >
-          <Bell className="h-4 w-4" />
+          <Bell className="h-4 w-4" aria-hidden />
         </button>
         <div
           className="hidden h-9 w-9 items-center justify-center rounded-full bg-[var(--vda-ink)] text-sm font-semibold text-[var(--vda-cream)] sm:flex"

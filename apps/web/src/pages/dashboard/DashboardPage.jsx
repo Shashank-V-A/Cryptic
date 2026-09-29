@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { MetricCard, EmptyState, StatusBadge, LoadingState, ProfitLoss } from '@vda-ledger/ui';
+import { MetricCard, EmptyState, StatusBadge, LoadingState, ErrorState, ProfitLoss } from '@vda-ledger/ui';
 import { useAuth } from '../../features/auth/AuthProvider.jsx';
 import { useUiStore } from '../../stores/uiStore.js';
 import { apiFetch } from '../../lib/api.js';
-import { formatInr, formatQty, relativeTime } from '../../lib/format.js';
+import { moneySign, formatInr, formatQty, relativeTime } from '../../lib/format.js';
 import { ChartCard } from '../../components/charts/ChartCard.jsx';
 import { PortfolioPerformanceChart } from '../../components/charts/PortfolioPerformanceChart.jsx';
 import { AllocationChart } from '../../components/charts/AllocationChart.jsx';
@@ -23,29 +23,34 @@ export function DashboardPage() {
     meta?.financialYears?.find((f) => f.id === financialYear)?.label ||
     financialYear.replace(/_/g, ' ');
 
-  const { data: portfolio, isLoading } = useQuery({
+  const {
+    data: portfolio,
+    isLoading,
+    error: portfolioError,
+    refetch: refetchPortfolio,
+  } = useQuery({
     queryKey: ['portfolio'],
     queryFn: () => apiFetch('/api/portfolio'),
     refetchInterval: 60_000,
   });
 
-  const { data: performance } = useQuery({
+  const { data: performance, error: performanceError } = useQuery({
     queryKey: ['portfolio-performance'],
     queryFn: () => apiFetch('/api/portfolio/performance?days=120'),
   });
 
-  const { data: tax } = useQuery({
+  const { data: tax, error: taxError } = useQuery({
     queryKey: ['tax-center', financialYear],
     queryFn: () => apiFetch(`/api/tax?financialYear=${financialYear}`),
   });
 
-  const { data: txns } = useQuery({
+  const { data: txns, error: txnsError } = useQuery({
     queryKey: ['transactions', { limit: 5 }],
     queryFn: () => apiFetch('/api/transactions?limit=5'),
   });
 
   const s = portfolio?.summary;
-  const taxSummary = tax?.latestCalculation?.summary;
+  const taxSummary = tax?.latestCalculation?.stale ? null : tax?.latestCalculation?.summary;
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 animate-fade-in sm:space-y-6">
@@ -67,6 +72,13 @@ export function DashboardPage() {
       </div>
 
       {isLoading ? <LoadingState label="Loading portfolio…" /> : null}
+      {portfolioError ? (
+        <ErrorState
+          title="Portfolio unavailable"
+          description={portfolioError.message}
+          onRetry={refetchPortfolio}
+        />
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 sm:gap-4">
         <MetricCard
@@ -78,7 +90,7 @@ export function DashboardPage() {
         <MetricCard
           label="Realized P&L"
           value={s ? formatInr(s.realizedPnl) : '—'}
-          tone={s && Number(s.realizedPnl) >= 0 ? 'positive' : 'negative'}
+          tone={s && moneySign(s.realizedPnl) >= 0 ? 'positive' : 'negative'}
         />
         <MetricCard
           label="Unrealized P&L"
@@ -86,12 +98,33 @@ export function DashboardPage() {
           tone={
             s?.unrealizedPnl == null
               ? 'default'
-              : Number(s.unrealizedPnl) >= 0
+              : moneySign(s.unrealizedPnl) >= 0
                 ? 'positive'
                 : 'negative'
           }
         />
       </div>
+
+      {performanceError || taxError || txnsError ? (
+        <p role="status" className="rounded border border-[var(--vda-border)] bg-[var(--vda-surface)] px-3 py-2 text-xs text-[var(--vda-ink-muted)]">
+          {[
+            performanceError && `Performance: ${performanceError.message}`,
+            taxError && `Tax: ${taxError.message}`,
+            txnsError && `Transactions: ${txnsError.message}`,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+      ) : null}
+
+      {tax?.calculationStale || tax?.latestCalculation?.stale ? (
+        <p role="status" className="rounded border border-[var(--vda-warning)]/40 bg-[var(--vda-surface)] px-3 py-2 text-xs text-[var(--vda-warning)]">
+          Tax summary is stale after ledger changes.{' '}
+          <Link to="/tax" className="font-medium underline">
+            Recalculate in Tax Center
+          </Link>
+        </p>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[1.45fr_1fr]">
         <ChartCard
@@ -223,7 +256,7 @@ export function DashboardPage() {
           {s?.realizedPnl != null ? (
             <p className="mt-4 flex items-center justify-between text-xs text-[var(--vda-ink-muted)]">
               <span>Realized P&amp;L (ledger)</span>
-              <ProfitLoss value={Number(s.realizedPnl)} formatted={formatInr(s.realizedPnl)} />
+              <ProfitLoss value={s.realizedPnl} formatted={formatInr(s.realizedPnl)} />
             </p>
           ) : null}
         </ChartCard>

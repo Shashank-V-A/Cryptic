@@ -13,6 +13,7 @@ import {
   Scale,
   ChevronLeft,
   ChevronRight,
+  LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthProvider.jsx';
 import { useUiStore } from '../../stores/uiStore.js';
@@ -122,7 +123,17 @@ export function Sidebar({ collapsed, mobileOpen, onCloseMobile }) {
                 Sign out
               </button>
             </div>
-          ) : null}
+          ) : (
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-md p-1 text-[var(--vda-sidebar-muted)] hover:bg-[var(--vda-sidebar-hover)] hover:text-white"
+              aria-label="Sign out"
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
     </aside>

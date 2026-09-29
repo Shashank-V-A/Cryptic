@@ -8,8 +8,10 @@ export function LoginPage() {
   const { login, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState('demo@vdaledger.in');
-  const [password, setPassword] = useState('DemoPass123!');
+  const [email, setEmail] = useState(
+    import.meta.env.DEV ? 'demo@vdaledger.in' : '',
+  );
+  const [password, setPassword] = useState(import.meta.env.DEV ? 'DemoPass123!' : '');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -87,9 +89,11 @@ export function LoginPage() {
             Create one
           </Link>
         </p>
-        <p className="mt-3 text-center text-xs text-[var(--vda-ink-faint)]">
-          Demo: demo@vdaledger.in / DemoPass123!
-        </p>
+        {import.meta.env.DEV ? (
+          <p className="mt-3 text-center text-xs text-[var(--vda-ink-faint)]">
+            Demo: demo@vdaledger.in / DemoPass123!
+          </p>
+        ) : null}
       </div>
     </div>
   );

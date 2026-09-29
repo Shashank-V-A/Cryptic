@@ -2,12 +2,17 @@ import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { LoadingState, ErrorState, StatusBadge } from '@vda-ledger/ui';
 import { apiFetch } from '../../lib/api.js';
+import { formatInr } from '../../lib/format.js';
 
-function Row({ label, value }) {
+function Row({ label, value, format = 'text' }) {
+  let display = value ?? '—';
+  if (format === 'inr') {
+    display = formatInr(value);
+  }
   return (
     <div className="flex justify-between gap-4 border-b border-[var(--vda-border)] py-2 text-sm">
       <dt className="text-[var(--vda-ink-muted)]">{label}</dt>
-      <dd className="text-right font-mono text-xs sm:text-sm">{value ?? '—'}</dd>
+      <dd className="text-right font-mono text-xs sm:text-sm">{display}</dd>
     </div>
   );
 }
@@ -51,10 +56,10 @@ export function TransactionDetailPage() {
         <dl className="mt-3">
           <Row label="Timestamp" value={new Date(n.timestamp).toLocaleString('en-IN')} />
           <Row label="Quantity" value={n.quantity} />
-          <Row label="Price" value={n.price} />
-          <Row label="Gross" value={n.grossValue} />
-          <Row label="Fee" value={n.fee} />
-          <Row label="Net" value={n.netValue} />
+          <Row label="Price" value={n.price} format="inr" />
+          <Row label="Gross" value={n.grossValue} format="inr" />
+          <Row label="Fee" value={n.fee} format="inr" />
+          <Row label="Net" value={n.netValue} format="inr" />
           <Row label="Financial year" value={n.financialYear} />
           <Row label="External ID" value={n.externalTransactionId} />
           <Row label="Source" value={n.source} />
@@ -69,7 +74,7 @@ export function TransactionDetailPage() {
           Calculation impact
         </h2>
         <dl className="mt-3">
-          <Row label="Realized P&L" value={data.calculationImpact.realizedPnlInr} />
+          <Row label="Realized P&L" value={data.calculationImpact.realizedPnlInr} format="inr" />
         </dl>
         {data.calculationImpact.lotsCreated?.length > 0 ? (
           <div className="mt-4">

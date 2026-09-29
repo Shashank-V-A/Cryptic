@@ -22,6 +22,13 @@ import { SettingsPage } from '../pages/settings/SettingsPage.jsx';
 import { ExchangesSettingsPage } from '../pages/settings/ExchangesSettingsPage.jsx';
 import { SecuritySettingsPage } from '../pages/settings/SecuritySettingsPage.jsx';
 import { ComingSoonPage } from '../pages/system/ComingSoonPage.jsx';
+import { useAuth } from '../features/auth/AuthProvider.jsx';
+
+function CatchAllRedirect() {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return null;
+  return <Navigate to={isAuthenticated ? '/dashboard' : '/'} replace />;
+}
 
 export function AppRoutes() {
   return (
@@ -49,14 +56,11 @@ export function AppRoutes() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/settings/exchanges" element={<ExchangesSettingsPage />} />
           <Route path="/settings/security" element={<SecuritySettingsPage />} />
-          <Route
-            path="/coming-soon/:feature"
-            element={<ComingSoonPage />}
-          />
+          <Route path="/coming-soon/:feature" element={<ComingSoonPage />} />
         </Route>
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<CatchAllRedirect />} />
     </Routes>
   );
 }

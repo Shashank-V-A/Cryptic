@@ -129,6 +129,35 @@
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
+  .editorial-rule {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--vda-sidebar-muted) 55%, transparent) 20%,
+      color-mix(in srgb, var(--vda-sidebar-muted) 55%, transparent) 80%,
+      transparent
+    );
+  }
+
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    top: auto;
+    z-index: 100;
+    padding: 0.5rem 1rem;
+    background: var(--vda-ink);
+    color: var(--vda-cream);
+    font-size: 0.875rem;
+    text-decoration: none;
+    border-radius: var(--vda-radius);
+  }
+
+  .skip-link:focus {
+    left: 1rem;
+    top: 1rem;
+  }
+
   .sticky-note {
     background: linear-gradient(160deg, #f7efd2 0%, #f0e4b8 100%);
     box-shadow: 2px 6px 14px rgba(26, 26, 26, 0.12);

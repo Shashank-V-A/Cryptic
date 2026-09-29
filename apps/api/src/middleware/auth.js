@@ -5,10 +5,13 @@ import { AppError } from '../lib/errors.js';
 const COOKIE_NAME = 'vda_session';
 
 export function getSessionCookieOptions(config) {
+  const sameSite = ['lax', 'strict', 'none'].includes(config.cookieSameSite)
+    ? config.cookieSameSite
+    : 'lax';
   return {
     httpOnly: true,
-    secure: config.cookieSecure,
-    sameSite: 'lax',
+    secure: sameSite === 'none' ? true : config.cookieSecure,
+    sameSite,
     path: '/',
     maxAge: 1000 * 60 * 60 * 24 * 14, // 14 days
   };

@@ -164,6 +164,25 @@ export const taxService = {
     const ruleSet = getTaxRuleSet(financialYear);
     const tdsSum = await tdsDeductedForFy(userId, financialYear);
 
+    const currentSells = await prisma.transaction.findMany({
+      where: {
+        userId,
+        financialYear,
+        transactionType: 'SELL',
+        status: { in: ['POSTED', 'NEEDS_REVIEW'] },
+      },
+      select: { id: true },
+      orderBy: [{ timestamp: 'asc' }, { id: 'asc' }],
+    });
+    const currentIds = currentSells.map((s) => s.id);
+    const savedIds = Array.isArray(latest?.inputTransactionIds)
+      ? latest.inputTransactionIds
+      : [];
+    const stale =
+      Boolean(latest) &&
+      (savedIds.length !== currentIds.length ||
+        savedIds.some((id, i) => id !== currentIds[i]));
+
     return {
       financialYear,
       ruleSet: {
@@ -176,8 +195,9 @@ export const taxService = {
         sources: ruleSet.verification,
       },
       latestCalculation: latest
-        ? serializeCalculation(latest)
+        ? { ...serializeCalculation(latest), stale }
         : null,
+      calculationStale: stale,
       tdsDeductedInr: tdsSum.toFixed(12),
       engineVersion: TAX_ENGINE_VERSION,
     };
@@ -280,9 +300,17 @@ export const taxService = {
     });
 
     if (!calc?.taxTransactions?.[0]) {
-      // Compute on the fly for this FY without requiring prior persist
-      const computed = await this.calculate(userId, txn.financialYear);
-      const line = computed.result.lines.find((l) => l.transactionId === transactionId);
+      // Read-only ephemeral compute — never persist from a "Why?" view
+      const rule = await ensureTaxRule(txn.financialYear);
+      const transfers = await loadTransfersForFy(userId, txn.financialYear);
+      const tdsDeducted = await tdsDeductedForFy(userId, txn.financialYear);
+      const result = calculateVdaTax({
+        financialYear: txn.financialYear,
+        ruleSetId: rule.ruleSetId,
+        transfers,
+        tdsDeductedInr: tdsDeducted.toString(),
+      });
+      const line = result.lines.find((l) => l.transactionId === transactionId);
       if (!line) {
         throw new AppError('No taxable transfer breakdown for this transaction', {
           status: 404,
@@ -295,8 +323,9 @@ export const taxService = {
         asset: txn.asset.symbol,
         type: txn.transactionType,
         line,
-        calculationId: computed.id,
-        ruleSetId: computed.ruleSetId,
+        calculationId: null,
+        ephemeral: true,
+        ruleSetId: rule.ruleSetId,
       };
     }
 
@@ -414,7 +443,16 @@ export const tdsService = {
       })),
     });
 
-    const recorded = await prisma.tdsRecord.findMany({ where: { userId } });
+    const rule = getTaxRuleSet(financialYear);
+    const recorded = await prisma.tdsRecord.findMany({
+      where: {
+        userId,
+        date: {
+          gte: new Date(rule.effectiveFrom),
+          lte: new Date(`${rule.effectiveTo}T23:59:59.999Z`),
+        },
+      },
+    });
     const reconciliation = reconcileTds({
       expectedLines: expected.lines,
       recorded: recorded.map((r) => ({

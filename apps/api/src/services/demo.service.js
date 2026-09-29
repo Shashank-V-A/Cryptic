@@ -142,6 +142,10 @@ export const DEMO_TRANSACTIONS = [
 ];
 
 async function clearUserLedger(userId) {
+  // Drop tax/report/tds links before transactions — FKs have no onDelete cascade to Transaction
+  await prisma.taxCalculation.deleteMany({ where: { userId } });
+  await prisma.report.deleteMany({ where: { userId } });
+  await prisma.tdsRecord.deleteMany({ where: { userId } });
   await prisma.lotAllocation.deleteMany({ where: { sellTransaction: { userId } } });
   await prisma.acquisitionLot.deleteMany({ where: { userId } });
   await prisma.portfolioHoldingSnapshot.deleteMany({

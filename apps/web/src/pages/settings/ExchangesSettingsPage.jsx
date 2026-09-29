@@ -58,6 +58,9 @@ export function ExchangesSettingsPage() {
       queryClient.invalidateQueries({ queryKey: ['exchange-sync-runs'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+      queryClient.invalidateQueries({ queryKey: ['tax-center'] });
+      queryClient.invalidateQueries({ queryKey: ['tds'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
       setMessage(
         data.mode === 'inline'
           ? `Sync finished inline (${data.status}).`
