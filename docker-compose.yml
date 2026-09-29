@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vda-ledger-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vda
+      POSTGRES_PASSWORD: vda_dev_password
+      POSTGRES_DB: vda_ledger
+    ports:
+      - "5433:5432"
+    volumes:
+      - vda_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vda -d vda_ledger"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: vda-ledger-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - vda_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  vda_postgres_data:
+  vda_redis_data:

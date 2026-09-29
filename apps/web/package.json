@@ -1,0 +1,34 @@
+{
+  "name": "@vda-ledger/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "lint": "echo \"lint placeholder\""
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.67.2",
+    "@vda-ledger/shared": "*",
+    "@vda-ledger/ui": "*",
+    "lucide-react": "^0.479.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.3.0",
+    "recharts": "^2.15.1",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.14",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^26.0.0",
+    "tailwindcss": "^4.0.14",
+    "vite": "^6.2.2",
+    "vitest": "^3.0.8"
+  }
+}

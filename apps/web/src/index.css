@@ -1,0 +1,97 @@
+@import "tailwindcss";
+@import "@vda-ledger/ui/tokens.css";
+
+@theme {
+  --font-display: var(--vda-font-display);
+  --font-body: var(--vda-font-body);
+  --font-mono: var(--vda-font-mono);
+  --font-annotation: var(--vda-font-annotation);
+  --color-cream: var(--vda-cream);
+  --color-cream-deep: var(--vda-cream-deep);
+  --color-paper: var(--vda-paper);
+  --color-surface: var(--vda-surface);
+  --color-ink: var(--vda-ink);
+  --color-ink-soft: var(--vda-ink-soft);
+  --color-ink-muted: var(--vda-ink-muted);
+  --color-green: var(--vda-green);
+  --color-terracotta: var(--vda-terracotta);
+  --color-border: var(--vda-border);
+  --color-sidebar: var(--vda-sidebar);
+  --color-positive: var(--vda-positive);
+  --color-negative: var(--vda-negative);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--vda-font-body);
+    color: var(--vda-ink);
+    background: var(--vda-cream);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--vda-green) 28%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--vda-green);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .paper-texture {
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(182, 92, 58, 0.05), transparent 45%),
+      radial-gradient(ellipse at 85% 20%, rgba(61, 90, 69, 0.06), transparent 40%),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  }
+
+  .editorial-rule {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--vda-border-strong), transparent);
+  }
+
+  .animate-fade-up {
+    animation: fadeUp 0.7s ease both;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease both;
+  }
+
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-up,
+    .animate-fade-in,
+    .animate-spin {
+      animation: none !important;
+    }
+  }
+}

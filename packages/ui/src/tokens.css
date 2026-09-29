@@ -1,0 +1,55 @@
+/* VDA Ledger design tokens — editorial financial aesthetic */
+:root {
+  /* Surfaces */
+  --vda-cream: #f3efe6;
+  --vda-cream-deep: #ebe4d6;
+  --vda-paper: #f7f3eb;
+  --vda-surface: #fffdf8;
+  --vda-surface-muted: #f0ebe1;
+
+  /* Ink */
+  --vda-ink: #1c1f1a;
+  --vda-ink-soft: #3a3f37;
+  --vda-ink-muted: #6b7166;
+  --vda-ink-faint: #9aa194;
+
+  /* Accents */
+  --vda-green: #3d5a45;
+  --vda-green-soft: #5a7a62;
+  --vda-green-muted: #d8e2d9;
+  --vda-terracotta: #b65c3a;
+  --vda-terracotta-soft: #c97a5c;
+  --vda-terracotta-muted: #f0ddd4;
+
+  /* Semantic */
+  --vda-positive: #2f6b4f;
+  --vda-negative: #a34832;
+  --vda-warning: #9a6b2f;
+  --vda-info: #3d5a6b;
+
+  /* Dashboard shell */
+  --vda-sidebar: #1a1d19;
+  --vda-sidebar-hover: #262a24;
+  --vda-sidebar-active: #2e342c;
+  --vda-sidebar-text: #d8d5cc;
+  --vda-sidebar-muted: #8a8f84;
+
+  /* Borders & elevation */
+  --vda-border: #ddd4c5;
+  --vda-border-strong: #c8bdaa;
+  --vda-shadow-sm: 0 1px 2px rgba(28, 31, 26, 0.06);
+  --vda-shadow-md: 0 8px 24px rgba(28, 31, 26, 0.08);
+  --vda-radius: 6px;
+  --vda-radius-lg: 10px;
+
+  /* Typography */
+  --vda-font-display: "Fraunces", "Source Serif 4", Georgia, serif;
+  --vda-font-body: "Satoshi", "DM Sans", "Segoe UI", sans-serif;
+  --vda-font-mono: "IBM Plex Mono", "SF Mono", ui-monospace, monospace;
+  --vda-font-annotation: "Caveat", "Segoe Print", cursive;
+
+  /* Layout */
+  --vda-sidebar-width: 248px;
+  --vda-sidebar-collapsed: 72px;
+  --vda-topbar-height: 64px;
+}

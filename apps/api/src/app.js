@@ -1,0 +1,46 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
+import rateLimit from 'express-rate-limit';
+import { authRouter } from './routes/auth.routes.js';
+import { healthRouter } from './routes/health.routes.js';
+import { meRouter } from './routes/me.routes.js';
+import { errorHandler } from './middleware/errorHandler.js';
+import { notFound } from './middleware/notFound.js';
+
+export function createApp(config) {
+  const app = express();
+
+  app.set('trust proxy', 1);
+  app.use(helmet());
+  app.use(
+    cors({
+      origin: config.corsOrigin,
+      credentials: true,
+    }),
+  );
+  app.use(morgan(config.nodeEnv === 'production' ? 'combined' : 'dev'));
+  app.use(express.json({ limit: '2mb' }));
+  app.use(express.urlencoded({ extended: false }));
+  app.use(cookieParser());
+
+  app.use(
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 300,
+      standardHeaders: true,
+      legacyHeaders: false,
+    }),
+  );
+
+  app.use('/api/health', healthRouter);
+  app.use('/api/auth', authRouter);
+  app.use('/api/me', meRouter);
+
+  app.use(notFound);
+  app.use(errorHandler);
+
+  return app;
+}

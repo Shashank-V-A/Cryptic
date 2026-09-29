@@ -1,0 +1,17 @@
+{
+  "name": "@vda-ledger/tax-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test ./src/**/*.test.js"
+  },
+  "dependencies": {
+    "@vda-ledger/shared": "*",
+    "decimal.js": "^10.5.0"
+  }
+}

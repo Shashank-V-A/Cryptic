@@ -1,0 +1,588 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TransactionType {
+  BUY
+  SELL
+  TRANSFER_IN
+  TRANSFER_OUT
+  DEPOSIT
+  WITHDRAWAL
+  FEE
+  REWARD
+  AIRDROP
+  GIFT
+  SWAP
+  UNKNOWN
+}
+
+enum TransactionStatus {
+  POSTED
+  PENDING
+  NEEDS_REVIEW
+  IGNORED
+}
+
+enum TransactionSource {
+  EXCHANGE_SYNC
+  CSV_IMPORT
+  MANUAL
+  DEMO
+  SYSTEM
+}
+
+enum SipFrequency {
+  WEEKLY
+  MONTHLY
+}
+
+enum TdsStatus {
+  MATCHED
+  PARTIALLY_MATCHED
+  NOT_FOUND
+  NEEDS_REVIEW
+}
+
+enum ReconciliationStatus {
+  RECONCILED
+  MISMATCH
+  NEEDS_REVIEW
+}
+
+enum ReportType {
+  CRYPTO_TAX
+  PORTFOLIO
+  TRANSACTION_LEDGER
+  TDS_RECONCILIATION
+  SCHEDULE_VDA
+  ITR_READY
+}
+
+enum ReportStatus {
+  PENDING
+  GENERATING
+  READY
+  FAILED
+}
+
+enum ExchangeSlug {
+  COINDCX
+  BINANCE
+  KRAKEN
+  COINSWITCH
+  CSV
+  OTHER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  demoMode     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions             Session[]
+  accounts             Account[]
+  exchangeConnections  ExchangeConnection[]
+  transactions         Transaction[]
+  acquisitionLots      AcquisitionLot[]
+  portfolioSnapshots   PortfolioSnapshot[]
+  sipPlans             SipPlan[]
+  taxCalculations      TaxCalculation[]
+  tdsRecords           TdsRecord[]
+  reconciliationRuns   ReconciliationRun[]
+  reports              Report[]
+  auditLogs            AuditLog[]
+  notifications        Notification[]
+  importBatches        ImportBatch[]
+
+  @@index([email])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Account {
+  id        String   @id @default(cuid())
+  userId    String
+  label     String   @default("Primary")
+  currency  String   @default("INR")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Exchange {
+  id        String       @id @default(cuid())
+  slug      ExchangeSlug @unique
+  name      String
+  website   String?
+  createdAt DateTime     @default(now())
+
+  connections ExchangeConnection[]
+  transactions Transaction[]
+}
+
+model ExchangeConnection {
+  id                    String    @id @default(cuid())
+  userId                String
+  exchangeId            String
+  label                 String?
+  encryptedApiKey       String?
+  encryptedApiSecret    String?
+  permissionsScope      String    @default("read")
+  status                String    @default("disconnected")
+  lastSyncedAt          DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exchange Exchange @relation(fields: [exchangeId], references: [id])
+
+  @@index([userId])
+  @@index([exchangeId])
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  symbol    String   @unique
+  name      String
+  decimals  Int      @default(8)
+  coingeckoId String?
+  isFiat    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  prices           AssetPrice[]
+  transactions     Transaction[]
+  acquisitionLots  AcquisitionLot[]
+  sipPlans         SipPlan[]
+  holdingsSnapshots PortfolioHoldingSnapshot[]
+
+  @@index([symbol])
+}
+
+model AssetPrice {
+  id        String   @id @default(cuid())
+  assetId   String
+  priceInr  Decimal  @db.Decimal(28, 12)
+  source    String
+  asOf      DateTime
+  createdAt DateTime @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, asOf])
+  @@unique([assetId, asOf, source])
+}
+
+model Transaction {
+  id                    String            @id @default(cuid())
+  userId                String
+  exchangeId            String?
+  externalTransactionId String?
+  timestamp             DateTime
+  assetId               String
+  transactionType       TransactionType
+  quantity              Decimal           @db.Decimal(28, 18)
+  price                 Decimal?          @db.Decimal(28, 12)
+  grossValue            Decimal?          @db.Decimal(28, 12)
+  fee                   Decimal?          @db.Decimal(28, 12)
+  feeAssetId            String?
+  netValue              Decimal?          @db.Decimal(28, 12)
+  currency              String            @default("INR")
+  source                TransactionSource
+  status                TransactionStatus @default(POSTED)
+  financialYear         String?
+  rawData               Json?
+  notes                 String?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exchange          Exchange?          @relation(fields: [exchangeId], references: [id])
+  asset             Asset              @relation(fields: [assetId], references: [id])
+  fees              TransactionFee[]
+  metadata          TransactionMetadata?
+  acquisitionLots   AcquisitionLot[]   @relation("LotSourceTransaction")
+  lotAllocations    LotAllocation[]
+  taxTransactions   TaxTransaction[]
+  tdsRecords        TdsRecord[]
+  reportLinks       ReportTransaction[]
+  importBatchItems  ImportBatchItem[]
+
+  @@unique([userId, exchangeId, externalTransactionId])
+  @@index([userId, timestamp])
+  @@index([userId, assetId])
+  @@index([userId, financialYear])
+  @@index([userId, transactionType])
+  @@index([externalTransactionId])
+}
+
+model TransactionFee {
+  id            String  @id @default(cuid())
+  transactionId String
+  feeAssetId    String?
+  amount        Decimal @db.Decimal(28, 18)
+  amountInr     Decimal? @db.Decimal(28, 12)
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+}
+
+model TransactionMetadata {
+  id            String  @id @default(cuid())
+  transactionId String  @unique
+  classificationConfidence Float?
+  needsReview   Boolean @default(false)
+  reviewReason  String?
+  normalizedPayload Json?
+  originalPayload   Json?
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+}
+
+model AcquisitionLot {
+  id                String   @id @default(cuid())
+  userId            String
+  assetId           String
+  sourceTransactionId String
+  acquiredAt        DateTime
+  originalQuantity  Decimal  @db.Decimal(28, 18)
+  remainingQuantity Decimal  @db.Decimal(28, 18)
+  unitCostInr       Decimal  @db.Decimal(28, 12)
+  totalCostInr      Decimal  @db.Decimal(28, 12)
+  financialYear     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset             Asset         @relation(fields: [assetId], references: [id])
+  sourceTransaction Transaction   @relation("LotSourceTransaction", fields: [sourceTransactionId], references: [id])
+  allocations       LotAllocation[]
+
+  @@index([userId, assetId, acquiredAt])
+  @@index([sourceTransactionId])
+}
+
+model LotAllocation {
+  id                String  @id @default(cuid())
+  lotId             String
+  sellTransactionId String
+  quantity          Decimal @db.Decimal(28, 18)
+  costBasisInr      Decimal @db.Decimal(28, 12)
+  proceedsInr       Decimal @db.Decimal(28, 12)
+  realizedPnlInr    Decimal @db.Decimal(28, 12)
+  createdAt         DateTime @default(now())
+
+  lot             AcquisitionLot @relation(fields: [lotId], references: [id], onDelete: Cascade)
+  sellTransaction Transaction    @relation(fields: [sellTransactionId], references: [id], onDelete: Cascade)
+
+  @@index([lotId])
+  @@index([sellTransactionId])
+}
+
+model PortfolioSnapshot {
+  id            String   @id @default(cuid())
+  userId        String
+  asOf          DateTime
+  totalInvested Decimal  @db.Decimal(28, 12)
+  currentValue  Decimal  @db.Decimal(28, 12)
+  realizedPnl   Decimal  @db.Decimal(28, 12)
+  unrealizedPnl Decimal  @db.Decimal(28, 12)
+  createdAt     DateTime @default(now())
+
+  user     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holdings PortfolioHoldingSnapshot[]
+
+  @@index([userId, asOf])
+}
+
+model PortfolioHoldingSnapshot {
+  id                String  @id @default(cuid())
+  snapshotId        String
+  assetId           String
+  quantity          Decimal @db.Decimal(28, 18)
+  averageCostInr    Decimal @db.Decimal(28, 12)
+  currentPriceInr   Decimal? @db.Decimal(28, 12)
+  currentValueInr   Decimal? @db.Decimal(28, 12)
+  unrealizedPnlInr  Decimal? @db.Decimal(28, 12)
+
+  snapshot PortfolioSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  asset    Asset             @relation(fields: [assetId], references: [id])
+
+  @@index([snapshotId])
+  @@index([assetId])
+}
+
+model SipPlan {
+  id          String       @id @default(cuid())
+  userId      String
+  assetId     String
+  frequency   SipFrequency
+  amountInr   Decimal      @db.Decimal(28, 12)
+  startDate   DateTime
+  endDate     DateTime?
+  isActive    Boolean      @default(true)
+  label       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset        Asset           @relation(fields: [assetId], references: [id])
+  sipTransactions SipTransaction[]
+
+  @@index([userId, isActive])
+}
+
+model SipTransaction {
+  id            String   @id @default(cuid())
+  sipPlanId     String
+  executedAt    DateTime
+  amountInr     Decimal  @db.Decimal(28, 12)
+  quantity      Decimal? @db.Decimal(28, 18)
+  priceInr      Decimal? @db.Decimal(28, 12)
+  ledgerTxnId   String?
+  createdAt     DateTime @default(now())
+
+  sipPlan SipPlan @relation(fields: [sipPlanId], references: [id], onDelete: Cascade)
+
+  @@index([sipPlanId, executedAt])
+}
+
+model TaxYear {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  label     String
+  startDate DateTime
+  endDate   DateTime
+
+  taxRules TaxRule[]
+}
+
+model TaxRule {
+  id              String   @id @default(cuid())
+  taxYearId       String
+  version         String
+  ruleSetId       String   @unique
+  payload         Json
+  officialSource  String?
+  isDraft         Boolean  @default(true)
+  effectiveFrom   DateTime
+  effectiveTo     DateTime
+  createdAt       DateTime @default(now())
+
+  taxYear         TaxYear           @relation(fields: [taxYearId], references: [id])
+  taxCalculations TaxCalculation[]
+
+  @@index([taxYearId, version])
+}
+
+model TaxCalculation {
+  id                   String   @id @default(cuid())
+  userId               String
+  taxRuleId            String
+  financialYear        String
+  calculationVersion   String
+  calculationTimestamp DateTime @default(now())
+  inputTransactionIds  Json
+  output               Json
+  saleConsideration    Decimal? @db.Decimal(28, 12)
+  acquisitionCost      Decimal? @db.Decimal(28, 12)
+  vdaIncome            Decimal? @db.Decimal(28, 12)
+  estimatedTax         Decimal? @db.Decimal(28, 12)
+  cess                 Decimal? @db.Decimal(28, 12)
+  tdsDeducted          Decimal? @db.Decimal(28, 12)
+  estimatedRemaining   Decimal? @db.Decimal(28, 12)
+  createdAt            DateTime @default(now())
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taxRule         TaxRule          @relation(fields: [taxRuleId], references: [id])
+  taxTransactions TaxTransaction[]
+
+  @@index([userId, financialYear])
+  @@index([taxRuleId])
+}
+
+model TaxTransaction {
+  id                String  @id @default(cuid())
+  taxCalculationId  String
+  transactionId     String
+  consideration     Decimal @db.Decimal(28, 12)
+  acquisitionCost   Decimal @db.Decimal(28, 12)
+  income            Decimal @db.Decimal(28, 12)
+  tax               Decimal @db.Decimal(28, 12)
+  breakdown         Json?
+
+  taxCalculation TaxCalculation @relation(fields: [taxCalculationId], references: [id], onDelete: Cascade)
+  transaction    Transaction    @relation(fields: [transactionId], references: [id])
+
+  @@index([taxCalculationId])
+  @@index([transactionId])
+}
+
+model TdsRecord {
+  id              String    @id @default(cuid())
+  userId          String
+  transactionId   String?
+  date            DateTime
+  assetSymbol     String?
+  saleValueInr    Decimal?  @db.Decimal(28, 12)
+  tdsAmountInr    Decimal   @db.Decimal(28, 12)
+  status          TdsStatus @default(NEEDS_REVIEW)
+  source          String
+  rawData         Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@index([userId, date])
+  @@index([transactionId])
+  @@index([status])
+}
+
+model ReconciliationRun {
+  id        String   @id @default(cuid())
+  userId    String
+  ranAt     DateTime @default(now())
+  notes     String?
+
+  user  User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items ReconciliationItem[]
+
+  @@index([userId, ranAt])
+}
+
+model ReconciliationItem {
+  id               String               @id @default(cuid())
+  runId            String
+  assetSymbol      String
+  exchangeQuantity Decimal              @db.Decimal(28, 18)
+  ledgerQuantity   Decimal              @db.Decimal(28, 18)
+  difference       Decimal              @db.Decimal(28, 18)
+  status           ReconciliationStatus
+  investigationNotes String?
+
+  run ReconciliationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@index([status])
+}
+
+model Report {
+  id             String       @id @default(cuid())
+  userId         String
+  type           ReportType
+  financialYear  String?
+  status         ReportStatus @default(PENDING)
+  title          String
+  filePath       String?
+  payload        Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions ReportTransaction[]
+
+  @@index([userId, type])
+  @@index([financialYear])
+}
+
+model ReportTransaction {
+  id            String @id @default(cuid())
+  reportId      String
+  transactionId String
+
+  report      Report      @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+
+  @@unique([reportId, transactionId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String?
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([action])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model ImportBatch {
+  id           String   @id @default(cuid())
+  userId       String
+  filename     String
+  source       String
+  status       String
+  summary      Json?
+  rawStorageKey String?
+  createdAt    DateTime @default(now())
+  confirmedAt  DateTime?
+
+  user  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items ImportBatchItem[]
+
+  @@index([userId, createdAt])
+}
+
+model ImportBatchItem {
+  id            String  @id @default(cuid())
+  batchId       String
+  rowNumber     Int
+  status        String
+  rawRow        Json
+  normalized    Json?
+  errorMessage  String?
+  transactionId String?
+
+  batch       ImportBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@index([batchId, status])
+}

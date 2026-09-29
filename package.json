@@ -1,0 +1,28 @@
+{
+  "name": "vda-ledger",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VDA Ledger — India-focused crypto portfolio, transaction ledger, and tax intelligence platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "workers"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:web": "npm run dev -w @vda-ledger/web",
+    "dev:api": "npm run dev -w @vda-ledger/api",
+    "dev:workers": "npm run dev -w @vda-ledger/workers",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:generate": "npm run db:generate -w @vda-ledger/api",
+    "db:migrate": "npm run db:migrate -w @vda-ledger/api",
+    "db:push": "npm run db:push -w @vda-ledger/api",
+    "db:seed": "npm run db:seed -w @vda-ledger/api",
+    "db:studio": "npm run db:studio -w @vda-ledger/api",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
