@@ -1,12 +1,51 @@
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Bell, Menu } from 'lucide-react';
 import { FinancialYearSelector } from '../forms/FinancialYearSelector.jsx';
 import { useAuth } from '../../features/auth/AuthProvider.jsx';
 import { useUiStore } from '../../stores/uiStore.js';
+import { apiFetch } from '../../lib/api.js';
 
 export function Topbar({ onOpenMobile }) {
-  const { user, meta } = useAuth();
+  const { user, meta, refresh } = useAuth();
   const { financialYear, setFinancialYear } = useUiStore();
   const years = meta?.financialYears || [];
+  const queryClient = useQueryClient();
+  const [demoStatus, setDemoStatus] = useState('idle'); // idle | loading | done | error
+  const [demoMessage, setDemoMessage] = useState('');
+
+  const demoEnabled = Boolean(meta?.app?.demoMode || user?.demoMode);
+
+  async function handleLoadDemo() {
+    if (demoStatus === 'loading') return;
+    setDemoStatus('loading');
+    setDemoMessage('');
+    try {
+      const result = await apiFetch('/api/demo/load', { method: 'POST' });
+      await refresh();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['portfolio'] }),
+        queryClient.invalidateQueries({ queryKey: ['portfolio-performance'] }),
+        queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+        queryClient.invalidateQueries({ queryKey: ['portfolio-asset'] }),
+      ]);
+      setDemoStatus('done');
+      setDemoMessage(
+        `Loaded ${result.transactionCount} fictional txs · ${result.holdings?.join(', ') || 'holdings'}`,
+      );
+      window.setTimeout(() => {
+        setDemoStatus('idle');
+        setDemoMessage('');
+      }, 4000);
+    } catch (err) {
+      setDemoStatus('error');
+      setDemoMessage(err.message || 'Could not load demo ledger');
+      window.setTimeout(() => {
+        setDemoStatus('idle');
+        setDemoMessage('');
+      }, 5000);
+    }
+  }
 
   return (
     <header className="sticky top-0 z-20 flex h-[var(--vda-topbar-height)] items-center justify-between gap-3 border-b border-[var(--vda-border)] bg-[var(--vda-cream)]/90 px-4 backdrop-blur sm:px-6 lg:px-8">
@@ -26,11 +65,33 @@ export function Topbar({ onOpenMobile }) {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        {(meta?.app?.demoMode || user?.demoMode) && (
-          <span className="rounded border border-[var(--vda-border-strong)] bg-[var(--vda-surface)] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--vda-warning)]">
-            Demo mode
-          </span>
-        )}
+        {demoEnabled ? (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={handleLoadDemo}
+              disabled={demoStatus === 'loading'}
+              title="Load fictional demo portfolio into this workspace"
+              className="rounded border border-[var(--vda-border-strong)] bg-[var(--vda-surface)] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--vda-warning)] transition hover:bg-[var(--vda-paper)] disabled:opacity-60"
+            >
+              {demoStatus === 'loading'
+                ? 'Loading…'
+                : demoStatus === 'done'
+                  ? 'Demo loaded'
+                  : demoStatus === 'error'
+                    ? 'Demo failed'
+                    : 'Demo mode'}
+            </button>
+            {demoMessage ? (
+              <p
+                role="status"
+                className="absolute right-0 top-full z-30 mt-1 w-56 rounded border border-[var(--vda-border)] bg-[var(--vda-surface)] px-2 py-1.5 text-[10px] font-normal normal-case tracking-normal text-[var(--vda-ink-soft)] shadow-[var(--vda-shadow-sm)]"
+              >
+                {demoMessage}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         <FinancialYearSelector
           value={financialYear}
           options={years}

@@ -8,20 +8,24 @@ export const portfolioController = {
     res.json(data);
   }),
 
+  performance: asyncHandler(async (req, res) => {
+    const days = Math.min(Number(req.query.days) || 90, 365);
+    const data = await portfolioService.performanceSeries(req.user.id, { days });
+    res.json(data);
+  }),
+
+  snapshots: asyncHandler(async (req, res) => {
+    const data = await portfolioService.listSnapshots(req.user.id);
+    res.json({ items: data });
+  }),
+
   asset: asyncHandler(async (req, res) => {
-    const data = await portfolioService.calculate(req.user.id);
     const symbol = String(req.params.asset || '').toUpperCase();
-    const holding = data.holdings.find((h) => h.assetSymbol === symbol);
-    if (!holding) {
+    const data = await portfolioService.assetDetail(req.user.id, symbol);
+    if (!data) {
       throw new AppError(`No holding for ${symbol}`, { status: 404, code: 'NOT_FOUND' });
     }
-    res.json({
-      ...holding,
-      methodology: data.methodology,
-      asOf: data.asOf,
-      priceSource: data.priceSource,
-      warnings: data.warnings.filter((w) => w.message?.includes(symbol)),
-    });
+    res.json(data);
   }),
 
   recalculate: asyncHandler(async (req, res) => {

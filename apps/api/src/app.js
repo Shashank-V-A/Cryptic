@@ -10,6 +10,7 @@ import { meRouter } from './routes/me.routes.js';
 import { transactionRouter } from './routes/transaction.routes.js';
 import { importRouter } from './routes/import.routes.js';
 import { portfolioRouter } from './routes/portfolio.routes.js';
+import { demoRouter } from './routes/demo.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
 
@@ -44,6 +45,7 @@ export function createApp(config) {
   app.use('/api/transactions', transactionRouter);
   app.use('/api/imports', importRouter);
   app.use('/api/portfolio', portfolioRouter);
+  app.use('/api/demo', demoRouter);
 
   app.use(notFound);
   app.use(errorHandler);

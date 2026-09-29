@@ -311,9 +311,9 @@ model PortfolioSnapshot {
   userId        String
   asOf          DateTime
   totalInvested Decimal  @db.Decimal(28, 12)
-  currentValue  Decimal  @db.Decimal(28, 12)
+  currentValue  Decimal? @db.Decimal(28, 12)
   realizedPnl   Decimal  @db.Decimal(28, 12)
-  unrealizedPnl Decimal  @db.Decimal(28, 12)
+  unrealizedPnl Decimal? @db.Decimal(28, 12)
   createdAt     DateTime @default(now())
 
   user     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
