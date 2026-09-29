@@ -11,7 +11,7 @@
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.js",
     "db:studio": "prisma studio",
-    "test": "node --test ./src/**/*.test.js ./src/lib/**/*.test.js ./src/integrations/**/*.test.js"
+    "test": "node --test ./src/**/*.test.js ./src/lib/**/*.test.js ./src/integrations/**/*.test.js ./src/integrations/exchange/**/*.test.js"
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",
@@ -20,6 +20,7 @@
     "@vda-ledger/shared": "*",
     "@vda-ledger/tax-engine": "*",
     "bcryptjs": "^3.0.2",
+    "bullmq": "^6.3.9",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "decimal.js": "^10.5.0",
@@ -29,6 +30,7 @@
     "helmet": "^8.0.0",
     "ioredis": "^5.5.0",
     "morgan": "^1.10.0",
+    "pdfkit": "^0.20.2",
     "uuid": "^11.1.0",
     "zod": "^3.24.2"
   },

@@ -16,4 +16,16 @@ export {
 export { calculateVdaTax } from './calculate.js';
 export { calculateExpectedTds, reconcileTds } from './tds.js';
 export { explainWhyPaying } from './explain.js';
+export {
+  buildScheduleVda,
+  validateScheduleVda,
+  toItrReadyScheduleVda,
+  financialYearToAssessmentYear,
+  SCHEDULE_VDA_SCHEMA,
+  buildCryptoTaxReport,
+  buildItrReadyPackage,
+  assertScheduleMatchesTaxIncome,
+  REPORT_ENGINE_VERSION,
+} from './reports.js';
 export { Decimal, toDec, zero, decStr } from './decimal.js';
+

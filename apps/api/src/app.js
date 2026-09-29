@@ -13,6 +13,9 @@ import { portfolioRouter } from './routes/portfolio.routes.js';
 import { demoRouter } from './routes/demo.routes.js';
 import { taxRouter } from './routes/tax.routes.js';
 import { tdsRouter } from './routes/tds.routes.js';
+import { reportRouter } from './routes/report.routes.js';
+import { exchangeRouter } from './routes/exchange.routes.js';
+import { reconciliationRouter } from './routes/reconciliation.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
 
@@ -50,6 +53,9 @@ export function createApp(config) {
   app.use('/api/demo', demoRouter);
   app.use('/api/tax', taxRouter);
   app.use('/api/tds', tdsRouter);
+  app.use('/api/reports', reportRouter);
+  app.use('/api/exchanges', exchangeRouter);
+  app.use('/api/reconciliation', reconciliationRouter);
 
   app.use(notFound);
   app.use(errorHandler);

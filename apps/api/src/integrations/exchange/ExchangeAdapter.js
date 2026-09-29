@@ -1,92 +1,106 @@
 /**
- * Exchange adapter abstraction.
- * Only read permissions are supported — never request trade/withdraw access.
+ * Exchange adapter architecture — read-only only.
+ * Never request trade / withdraw / transfer permissions.
  *
- * Live CoinDCX wiring is Phase 8. This Phase 1 stub defines the contract.
+ * Live HTTP is only used when credentials are present.
+ * Missing credentials → clear CredentialError (no fabricated balances/trades).
  */
 
-export class ExchangeAdapter {
-  /** @returns {Promise<void>} */
-  async connect() {
-    throw new Error('Not implemented');
+export class ExchangeError extends Error {
+  constructor(message, { code = 'EXCHANGE_ERROR', status = 500, details = null } = {}) {
+    super(message);
+    this.name = 'ExchangeError';
+    this.code = code;
+    this.status = status;
+    this.details = details;
   }
+}
 
-  /** @returns {Promise<void>} */
-  async disconnect() {
-    throw new Error('Not implemented');
+export class CredentialError extends ExchangeError {
+  constructor(message, details = null) {
+    super(message, { code: 'CREDENTIALS_REQUIRED', status: 400, details });
+    this.name = 'CredentialError';
   }
+}
 
-  /** @returns {Promise<Array>} */
-  async getBalances() {
-    throw new Error('Not implemented');
-  }
-
-  /** @returns {Promise<Array>} */
-  async getTransactions() {
-    throw new Error('Not implemented');
-  }
-
-  /** @returns {Promise<Array>} */
-  async getOrders() {
-    throw new Error('Not implemented');
-  }
-
-  /** @returns {Promise<Array>} */
-  async getTrades() {
-    throw new Error('Not implemented');
-  }
-
-  /** @returns {Promise<Array>} */
-  async getDeposits() {
-    throw new Error('Not implemented');
-  }
-
-  /** @returns {Promise<Array>} */
-  async getWithdrawals() {
-    throw new Error('Not implemented');
+export class UnsupportedReadError extends ExchangeError {
+  constructor(message, details = null) {
+    super(message, { code: 'UNSUPPORTED_READ', status: 501, details });
+    this.name = 'UnsupportedReadError';
   }
 }
 
 /**
- * CoinDCX adapter — interface only until read-only credentials + Phase 8 sync.
- * Does not fake live API responses.
+ * Normalized ledger-ready trade event produced by adapters.
+ * @typedef {{
+ *   externalId: string,
+ *   timestamp: string,
+ *   assetSymbol: string,
+ *   transactionType: 'BUY'|'SELL'|string,
+ *   quantity: string,
+ *   price: string|null,
+ *   fee: string|null,
+ *   grossValue: string|null,
+ *   netValue: string|null,
+ *   currency: string,
+ *   raw: object,
+ * }} NormalizedExchangeTxn
  */
-export class CoinDCXAdapter extends ExchangeAdapter {
-  constructor({ apiKey, apiSecret } = {}) {
-    super();
-    this.apiKey = apiKey;
-    this.apiSecret = apiSecret;
+
+export class ExchangeAdapter {
+  /** @returns {string} */
+  get slug() {
+    throw new Error('slug not implemented');
+  }
+
+  /** @returns {{ readOnly: boolean, liveHttp: boolean, csv: boolean }} */
+  get capabilities() {
+    return { readOnly: true, liveHttp: false, csv: false };
+  }
+
+  /** @returns {Promise<void>} */
+  async connect() {
+    throw new Error('Not implemented');
+  }
+
+  /** @returns {Promise<void>} */
+  async disconnect() {
     this.connected = false;
   }
 
-  async connect() {
-    if (!this.apiKey || !this.apiSecret) {
-      throw new Error(
-        'CoinDCX read-only API credentials are required. Live sync is not available until configured (Phase 8). Use CSV import in the meantime.',
-      );
-    }
-    // Live HTTP client lands in Phase 8 — refuse to pretend connectivity.
-    throw new Error(
-      'CoinDCX live adapter is not implemented yet. CSV import and demo seed are the supported ingestion paths in early phases.',
+  /** @returns {Promise<Array<{ currency: string, balance: string, lockedBalance?: string }>>} */
+  async getBalances() {
+    throw new Error('Not implemented');
+  }
+
+  /** @returns {Promise<NormalizedExchangeTxn[]>} */
+  async getTransactions(_opts = {}) {
+    throw new Error('Not implemented');
+  }
+
+  /** @returns {Promise<Array>} */
+  async getOrders(_opts = {}) {
+    throw new Error('Not implemented');
+  }
+
+  /** @returns {Promise<Array>} */
+  async getTrades(_opts = {}) {
+    throw new Error('Not implemented');
+  }
+
+  /** @returns {Promise<Array>} */
+  async getDeposits(_opts = {}) {
+    throw new UnsupportedReadError(
+      `${this.slug}: deposits endpoint not wired — use CSV import for deposit history.`,
+    );
+  }
+
+  /** @returns {Promise<Array>} */
+  async getWithdrawals(_opts = {}) {
+    throw new UnsupportedReadError(
+      `${this.slug}: withdrawals endpoint not wired — use CSV import for withdrawal history.`,
     );
   }
 }
 
-export class CSVAdapter extends ExchangeAdapter {
-  constructor({ rows } = {}) {
-    super();
-    this.rows = rows || [];
-  }
-
-  async connect() {
-    return undefined;
-  }
-
-  async disconnect() {
-    return undefined;
-  }
-
-  async getTransactions() {
-    return this.rows;
-  }
-}
+export { normalizeCoinDcxTrade, parseCoinDcxMarket } from './coindcxNormalize.js';

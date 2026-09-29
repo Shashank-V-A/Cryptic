@@ -236,7 +236,11 @@ export function DashboardPage() {
         <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
           <div className="flex justify-between gap-2 sm:block">
             <span>CoinDCX</span>
-            <StatusBadge tone="warning">Not connected</StatusBadge>
+            <StatusBadge tone="info">
+              <Link to="/settings/exchanges" className="no-underline">
+                Sync settings
+              </Link>
+            </StatusBadge>
           </div>
           <div className="flex justify-between gap-2 sm:block">
             <span>CSV import</span>

@@ -119,7 +119,7 @@ export function calculateVdaTax(input) {
       surcharge:
         'Surcharge is not included because it depends on total income under the Act outside this ledger.',
       filing:
-        'Schedule VDA / ITR export is disabled until the official utility schema for the assessment year is verified (filingReady=false).',
+        'Schedule VDA structured data is prepared from verified ITR-2 column definitions. Certified e-filing / utility XSD import is not enabled (filingReady=false).',
     },
     sources: ruleSet.verification,
   };

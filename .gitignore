@@ -18,5 +18,6 @@ Thumbs.db
 apps/api/prisma/migrations/**/migration_lock.toml.bak
 uploads/
 tmp/
+apps/api/storage/
 .cache/
 *.tsbuildinfo

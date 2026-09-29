@@ -29,7 +29,7 @@ const VERIFICATION = {
       'https://www.incometaxindia.gov.in/documents/20117/6507196/Circular-23-2022.pdf',
   },
   notes:
-    'Core statutory rates verified against Income Tax Department published section text. No Finance Act amendment changing the 30%/1% parameters was found for FY 2025-26 / 2026-27. Surcharge excluded from Estimated VDA Tax. Schedule VDA utility schema not verified — filing exports remain disabled.',
+    'Core statutory rates verified against Income Tax Department published section text. No Finance Act amendment changing the 30%/1% parameters was found for FY 2025-26 / 2026-27. Surcharge excluded from Estimated VDA Tax. Schedule VDA columns verified against ITR-2 instructions (AY 2023-24); structured export enabled for preparation. Certified e-filing / utility XSD import remains disabled.',
 };
 
 function buildRuleSet({ id, financialYear, effectiveFrom, effectiveTo }) {
@@ -88,8 +88,9 @@ function buildRuleSet({ id, financialYear, effectiveFrom, effectiveTo }) {
     },
     itrReporting: {
       schedule: 'Schedule VDA',
+      schemaId: 'SCHEDULE_VDA_ITR2_COLUMNS_v1',
       notes:
-        'ITR-2 / ITR-3 Schedule VDA field schema must be verified against the official utility for the assessment year before export. filingReady=false until then.',
+        'Columns verified against ITD Instructions to Form ITR-2 (AY 2023-24). AY 2026-27 schema change doc v1.2 does not alter Schedule VDA. Structured export available; certified e-filing/utility XSD import remains disabled (filingReady=false).',
     },
     officialSourceNotes: VERIFICATION.notes,
   };

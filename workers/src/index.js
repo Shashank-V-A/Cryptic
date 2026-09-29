@@ -1,16 +1,25 @@
 /**
- * Background workers (BullMQ) — sync, price refresh, report generation.
- * Phase 1: process bootstrap only. Job processors land with later phases.
+ * Background workers (BullMQ) — exchange sync and related jobs.
+ * Falls back gracefully if Redis is down (API runs sync inline).
  */
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import dotenv from 'dotenv';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../apps/api/.env') });
 
-console.log('[workers] VDA Ledger workers scaffold ready (no job processors in Phase 1).');
-console.log('[workers] Planned queues: exchange-sync, price-refresh, tax-recalc, report-generate');
+const queuesUrl = pathToFileURL(
+  path.resolve(__dirname, '../../apps/api/src/jobs/queues.js'),
+).href;
 
-// Keep process alive in watch mode without crashing when Redis is down.
-setInterval(() => {}, 60_000);
+const { startExchangeSyncWorker } = await import(queuesUrl);
+
+console.log('[workers] VDA Ledger workers starting…');
+const worker = startExchangeSyncWorker();
+if (!worker) {
+  console.warn('[workers] Redis/BullMQ unavailable — API will process sync jobs inline.');
+} else {
+  console.log('[workers] Queues: exchange-sync');
+}
