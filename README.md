@@ -98,7 +98,21 @@ npm run db:seed
 Seeds: tax years, draft TaxRuleSets, exchange catalog, assets (BTC/ETH/SOL/USDT/INR), demo user.  
 Transaction/portfolio/tax ledger demo data arrives in Phase 2+.
 
-## CoinDCX
+## CSV import
+
+Recommended headers:
+
+```text
+timestamp,asset,type,quantity,price,fee,external_id
+```
+
+CoinDCX-like trade columns (`date`, `market`, `side`, `amount`, `price`, `fee`, `total`, `trade_id`) are also accepted.
+
+Pipeline: Preview → Confirm → Insert (skip duplicates) → Recalculate lots (FIFO) → Portfolio refresh.
+
+Sample file: `apps/api/fixtures/sample-coindcx-like.csv`
+
+Unknown types are stored as `UNKNOWN` with **Review Required** — never silently classified.
 
 - Adapter interface: `apps/api/src/integrations/exchange/ExchangeAdapter.js`
 - Live sync is **not faked**. Use CSV import (Phase 2) until Phase 8.

@@ -7,6 +7,9 @@ import rateLimit from 'express-rate-limit';
 import { authRouter } from './routes/auth.routes.js';
 import { healthRouter } from './routes/health.routes.js';
 import { meRouter } from './routes/me.routes.js';
+import { transactionRouter } from './routes/transaction.routes.js';
+import { importRouter } from './routes/import.routes.js';
+import { portfolioRouter } from './routes/portfolio.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
 
@@ -22,7 +25,7 @@ export function createApp(config) {
     }),
   );
   app.use(morgan(config.nodeEnv === 'production' ? 'combined' : 'dev'));
-  app.use(express.json({ limit: '2mb' }));
+  app.use(express.json({ limit: '5mb' }));
   app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
 
@@ -38,6 +41,9 @@ export function createApp(config) {
   app.use('/api/health', healthRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/me', meRouter);
+  app.use('/api/transactions', transactionRouter);
+  app.use('/api/imports', importRouter);
+  app.use('/api/portfolio', portfolioRouter);
 
   app.use(notFound);
   app.use(errorHandler);

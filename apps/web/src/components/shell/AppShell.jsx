@@ -30,7 +30,7 @@ export function AppShell() {
   const { sidebarCollapsed, mobileNavOpen, setMobileNavOpen } = useUiStore();
 
   return (
-    <div className="min-h-screen bg-[var(--vda-cream)] paper-texture">
+    <div className="min-h-screen bg-[var(--vda-cream)] paper-texture paper-crease">
       <div className="flex min-h-screen">
         <Sidebar
           collapsed={sidebarCollapsed}

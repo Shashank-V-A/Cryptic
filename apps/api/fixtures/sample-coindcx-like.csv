@@ -1,0 +1,5 @@
+timestamp,asset,type,quantity,price,fee,external_id
+2025-07-01T10:00:00Z,BTC,BUY,0.001,6100000,50,sample-csv-1
+2025-07-15T10:00:00Z,ETH,BUY,0.05,260000,30,sample-csv-2
+2025-08-01T10:00:00Z,BTC,SELL,0.0005,7050000,25,sample-csv-3
+2025-08-20T10:00:00Z,SOL,MYSTERY,0.5,13000,0,sample-csv-unknown

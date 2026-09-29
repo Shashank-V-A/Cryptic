@@ -1,25 +1,25 @@
-/* VDA Ledger design tokens — editorial financial aesthetic */
+/* VDA Ledger design tokens — scrapbook / editorial financial aesthetic */
 :root {
-  /* Surfaces */
-  --vda-cream: #f3efe6;
-  --vda-cream-deep: #ebe4d6;
-  --vda-paper: #f7f3eb;
-  --vda-surface: #fffdf8;
-  --vda-surface-muted: #f0ebe1;
+  /* Surfaces — aged paper */
+  --vda-cream: #f2efe9;
+  --vda-cream-deep: #e8e2d6;
+  --vda-paper: #f7f4ee;
+  --vda-surface: #fffcf7;
+  --vda-surface-muted: #efe9df;
 
   /* Ink */
-  --vda-ink: #1c1f1a;
-  --vda-ink-soft: #3a3f37;
-  --vda-ink-muted: #6b7166;
-  --vda-ink-faint: #9aa194;
+  --vda-ink: #1a1a1a;
+  --vda-ink-soft: #2e2e2e;
+  --vda-ink-muted: #5c5c5c;
+  --vda-ink-faint: #8a8a8a;
 
-  /* Accents */
+  /* Accents — burnt orange + botanical */
   --vda-green: #3d5a45;
   --vda-green-soft: #5a7a62;
   --vda-green-muted: #d8e2d9;
-  --vda-terracotta: #b65c3a;
-  --vda-terracotta-soft: #c97a5c;
-  --vda-terracotta-muted: #f0ddd4;
+  --vda-terracotta: #e57d61;
+  --vda-terracotta-soft: #ec947c;
+  --vda-terracotta-muted: #f3d9cf;
 
   /* Semantic */
   --vda-positive: #2f6b4f;
@@ -37,14 +37,16 @@
   /* Borders & elevation */
   --vda-border: #ddd4c5;
   --vda-border-strong: #c8bdaa;
-  --vda-shadow-sm: 0 1px 2px rgba(28, 31, 26, 0.06);
-  --vda-shadow-md: 0 8px 24px rgba(28, 31, 26, 0.08);
+  --vda-shadow-sm: 0 1px 2px rgba(26, 26, 26, 0.06);
+  --vda-shadow-md: 0 12px 28px rgba(26, 26, 26, 0.1);
+  --vda-shadow-photo: 0 18px 40px rgba(26, 26, 26, 0.16), 0 2px 6px rgba(26, 26, 26, 0.08);
   --vda-radius: 6px;
   --vda-radius-lg: 10px;
+  --vda-radius-pill: 999px;
 
   /* Typography */
-  --vda-font-display: "Fraunces", "Source Serif 4", Georgia, serif;
-  --vda-font-body: "Satoshi", "DM Sans", "Segoe UI", sans-serif;
+  --vda-font-display: "Playfair Display", Georgia, "Times New Roman", serif;
+  --vda-font-body: "Instrument Sans", "Segoe UI", sans-serif;
   --vda-font-mono: "IBM Plex Mono", "SF Mono", ui-monospace, monospace;
   --vda-font-annotation: "Caveat", "Segoe Print", cursive;
 

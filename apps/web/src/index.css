@@ -37,40 +37,119 @@
   }
 
   ::selection {
-    background: color-mix(in srgb, var(--vda-green) 28%, transparent);
+    background: color-mix(in srgb, var(--vda-terracotta) 28%, transparent);
   }
 
   :focus-visible {
-    outline: 2px solid var(--vda-green);
+    outline: 2px solid var(--vda-terracotta);
     outline-offset: 2px;
   }
 }
 
 @layer utilities {
   .paper-texture {
+    background-color: var(--vda-cream);
     background-image:
-      radial-gradient(ellipse at 20% 10%, rgba(182, 92, 58, 0.05), transparent 45%),
-      radial-gradient(ellipse at 85% 20%, rgba(61, 90, 69, 0.06), transparent 40%),
-      url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+      radial-gradient(ellipse at 12% 8%, rgba(217, 93, 57, 0.04), transparent 42%),
+      radial-gradient(ellipse at 88% 18%, rgba(61, 90, 69, 0.05), transparent 38%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent 28%),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
   }
 
-  .editorial-rule {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--vda-border-strong), transparent);
+  .paper-crease {
+    background-image:
+      linear-gradient(90deg, transparent 48%, rgba(26, 26, 26, 0.035) 49.5%, transparent 51%),
+      linear-gradient(0deg, transparent 46%, rgba(26, 26, 26, 0.03) 49%, transparent 52%);
+  }
+
+  .hand-underline {
+    position: relative;
+    display: inline;
+    color: var(--vda-terracotta);
+  }
+
+  .hand-underline::after {
+    content: "";
+    position: absolute;
+    left: -2%;
+    right: -2%;
+    bottom: 0.06em;
+    height: 0.12em;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 8' preserveAspectRatio='none'%3E%3Cpath d='M1 5 Q40 1 80 4 T160 3 T199 5' fill='none' stroke='%23d95d39' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E")
+      center / 100% 100% no-repeat;
+    pointer-events: none;
+  }
+
+  .torn-photo {
+    clip-path: polygon(
+      0% 0%,
+      100% 0%,
+      99.2% 8%,
+      100% 16%,
+      98.5% 24%,
+      100% 33%,
+      98.8% 42%,
+      100% 52%,
+      98.4% 61%,
+      100% 71%,
+      98.9% 80%,
+      100% 90%,
+      98.6% 100%,
+      0% 100%
+    );
+  }
+
+  .washi-tape {
+    display: block;
+    border-radius: 1px;
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.28), transparent 42%),
+      repeating-linear-gradient(
+        -22deg,
+        rgba(255, 255, 255, 0.1) 0 2px,
+        transparent 2px 5px
+      ),
+      linear-gradient(180deg, #ec947c, #e57d61 55%, #d95d39);
+    box-shadow: 0 2px 5px rgba(26, 26, 26, 0.14);
+  }
+
+  .scrapbook-panel {
+    position: relative;
+    background: color-mix(in srgb, var(--vda-paper) 88%, white);
+    border: 1px solid color-mix(in srgb, var(--vda-border) 80%, transparent);
+    box-shadow: var(--vda-shadow-sm);
+  }
+
+  .scrapbook-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .sticky-note {
+    background: linear-gradient(160deg, #f7efd2 0%, #f0e4b8 100%);
+    box-shadow: 2px 6px 14px rgba(26, 26, 26, 0.12);
   }
 
   .animate-fade-up {
-    animation: fadeUp 0.7s ease both;
+    animation: fadeUp 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   .animate-fade-in {
     animation: fadeIn 0.6s ease both;
   }
 
+  .animate-float-in {
+    animation: floatIn 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
   @keyframes fadeUp {
     from {
       opacity: 0;
-      transform: translateY(16px);
+      transform: translateY(18px);
     }
     to {
       opacity: 1;
@@ -87,9 +166,21 @@
     }
   }
 
+  @keyframes floatIn {
+    from {
+      opacity: 0;
+      transform: translateY(24px) rotate(1.5deg) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) rotate(-1.5deg) scale(1);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .animate-fade-up,
     .animate-fade-in,
+    .animate-float-in,
     .animate-spin {
       animation: none !important;
     }

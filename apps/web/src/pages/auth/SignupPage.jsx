@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthProvider.jsx';
 import { BrandMark } from '../../components/brand/BrandMark.jsx';
+import { BotanicalLeaves } from '../../components/landing/CollageAccents.jsx';
 
 export function SignupPage() {
   const { signup, isAuthenticated, loading } = useAuth();
@@ -31,11 +32,14 @@ export function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--vda-cream)] paper-texture px-4">
-      <div className="w-full max-w-md rounded-[var(--vda-radius-lg)] border border-[var(--vda-border)] bg-[var(--vda-surface)] p-8 shadow-[var(--vda-shadow-md)]">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--vda-cream)] paper-texture paper-crease px-4">
+      <BotanicalLeaves width={170} className="absolute -right-10 top-6 rotate-6 opacity-90" />
+      <BotanicalLeaves width={120} className="absolute -left-6 bottom-8 -scale-x-100 opacity-75" />
+
+      <div className="scrapbook-panel relative z-10 w-full max-w-md p-8 shadow-[var(--vda-shadow-photo)]">
         <Link to="/" className="mb-6 flex items-center gap-2">
           <BrandMark size={28} />
-          <span className="font-[family-name:var(--vda-font-display)] text-lg">VDA Ledger</span>
+          <span className="text-[15px] font-semibold tracking-tight">VDA Ledger</span>
         </Link>
         <h1 className="font-[family-name:var(--vda-font-display)] text-2xl">Create account</h1>
         <p className="mt-1 text-sm text-[var(--vda-ink-muted)]">
@@ -84,7 +88,7 @@ export function SignupPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-[var(--vda-radius)] bg-[var(--vda-terracotta)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="w-full rounded-[var(--vda-radius-pill)] bg-[var(--vda-ink)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
           >
             {submitting ? 'Creating…' : 'Get Started Free'}
           </button>
