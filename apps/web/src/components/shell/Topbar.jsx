@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, Menu } from 'lucide-react';
 import { FinancialYearSelector } from '../forms/FinancialYearSelector.jsx';
 import { useAuth } from '../../features/auth/AuthProvider.jsx';
@@ -13,8 +13,40 @@ export function Topbar({ onOpenMobile }) {
   const queryClient = useQueryClient();
   const [demoStatus, setDemoStatus] = useState('idle'); // idle | loading | done | error
   const [demoMessage, setDemoMessage] = useState('');
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef(null);
 
   const demoEnabled = Boolean(meta?.app?.demoMode || user?.demoMode);
+
+  const notificationsQuery = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => apiFetch('/api/notifications'),
+    enabled: Boolean(user),
+    refetchInterval: 60_000,
+  });
+
+  const unread = notificationsQuery.data?.unreadCount ?? 0;
+  const notifications = notificationsQuery.data?.items || [];
+
+  useEffect(() => {
+    function onDocClick(e) {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
+
+  async function markRead(id) {
+    await apiFetch(`/api/notifications/${id}/read`, { method: 'POST' });
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+  }
+
+  async function markAllRead() {
+    await apiFetch('/api/notifications/read-all', { method: 'POST' });
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+  }
 
   async function handleLoadDemo() {
     if (demoStatus === 'loading') return;
@@ -31,6 +63,8 @@ export function Topbar({ onOpenMobile }) {
         queryClient.invalidateQueries({ queryKey: ['tax-center'] }),
         queryClient.invalidateQueries({ queryKey: ['tds'] }),
         queryClient.invalidateQueries({ queryKey: ['reports'] }),
+        queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+        queryClient.invalidateQueries({ queryKey: ['sips'] }),
       ]);
       setDemoStatus('done');
       setDemoMessage(
@@ -100,15 +134,65 @@ export function Topbar({ onOpenMobile }) {
           options={years}
           onChange={setFinancialYear}
         />
-        <button
-          type="button"
-          disabled
-          className="cursor-not-allowed rounded-md border border-[var(--vda-border)] bg-[var(--vda-surface)] p-2 text-[var(--vda-ink-faint)] opacity-60"
-          aria-label="Notifications unavailable"
-          title="Notifications — coming in a later phase"
-        >
-          <Bell className="h-4 w-4" aria-hidden />
-        </button>
+        <div className="relative" ref={notifRef}>
+          <button
+            type="button"
+            onClick={() => setNotifOpen((o) => !o)}
+            className="relative rounded-md border border-[var(--vda-border)] bg-[var(--vda-surface)] p-2 text-[var(--vda-ink)] hover:bg-[var(--vda-paper)]"
+            aria-label="Notifications"
+            aria-expanded={notifOpen}
+          >
+            <Bell className="h-4 w-4" aria-hidden />
+            {unread > 0 ? (
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--vda-terracotta)] px-1 text-[10px] font-bold text-white">
+                {unread > 9 ? '9+' : unread}
+              </span>
+            ) : null}
+          </button>
+          {notifOpen ? (
+            <div className="absolute right-0 top-full z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-[var(--vda-radius-lg)] border border-[var(--vda-border)] bg-[var(--vda-surface)] shadow-[var(--vda-shadow-md)]">
+              <div className="flex items-center justify-between border-b border-[var(--vda-border)] px-3 py-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--vda-ink-muted)]">
+                  Notifications
+                </p>
+                {unread > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => markAllRead()}
+                    className="text-xs text-[var(--vda-green)] hover:underline"
+                  >
+                    Mark all read
+                  </button>
+                ) : null}
+              </div>
+              <ul className="max-h-72 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <li className="px-3 py-4 text-sm text-[var(--vda-ink-muted)]">No notifications yet.</li>
+                ) : (
+                  notifications.map((n) => (
+                    <li key={n.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!n.readAt) markRead(n.id);
+                        }}
+                        className={`w-full px-3 py-2.5 text-left text-sm hover:bg-[var(--vda-paper)] ${
+                          n.readAt ? 'opacity-70' : 'bg-[var(--vda-paper)]/40'
+                        }`}
+                      >
+                        <p className="font-medium text-[var(--vda-ink)]">{n.title}</p>
+                        <p className="mt-0.5 text-xs text-[var(--vda-ink-soft)]">{n.body}</p>
+                        <p className="mt-1 text-[10px] text-[var(--vda-ink-faint)]">
+                          {new Date(n.createdAt).toLocaleString('en-IN')}
+                        </p>
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          ) : null}
+        </div>
         <div
           className="hidden h-9 w-9 items-center justify-center rounded-full bg-[var(--vda-ink)] text-sm font-semibold text-[var(--vda-cream)] sm:flex"
           aria-hidden

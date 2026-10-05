@@ -17,6 +17,8 @@ import { AppError } from '../lib/errors.js';
 import { portfolioService } from './portfolio.service.js';
 import { taxService, tdsService } from './tax.service.js';
 import { renderReportPdf } from '../lib/pdf.js';
+import { reportStorage } from '../lib/storage.js';
+import { logger } from '../lib/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STORAGE_ROOT = path.resolve(__dirname, '../../storage/reports');
@@ -304,7 +306,18 @@ export const reportService = {
       await fs.writeFile(pdfPath, pdfBuffer);
 
       const jsonPath = path.join(dir, `${pending.id}.json`);
-      await fs.writeFile(jsonPath, JSON.stringify(payload, null, 2), 'utf8');
+      const jsonBody = JSON.stringify(payload, null, 2);
+      await fs.writeFile(jsonPath, jsonBody, 'utf8');
+
+      // Optional remote mirror (S3) — local paths remain source of truth for downloads
+      await reportStorage
+        .put(`${userId}/${pending.id}.pdf`, pdfBuffer, { contentType: 'application/pdf' })
+        .catch((err) => logger.warn('Report remote store skipped', { error: err.message }));
+      await reportStorage
+        .put(`${userId}/${pending.id}.json`, Buffer.from(jsonBody, 'utf8'), {
+          contentType: 'application/json',
+        })
+        .catch((err) => logger.warn('Report JSON remote store skipped', { error: err.message }));
 
       const ready = await prisma.report.update({
         where: { id: pending.id },

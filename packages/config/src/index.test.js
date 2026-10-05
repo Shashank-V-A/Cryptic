@@ -37,5 +37,7 @@ describe('loadApiConfig', () => {
     });
     assert.equal(cfg.demoMode, false);
     assert.equal(cfg.cookieSecure, true);
+    assert.equal(cfg.reportStorage, 'local');
+    assert.equal(cfg.csrfEnabled, true);
   });
 });

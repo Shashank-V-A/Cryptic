@@ -11,4 +11,9 @@ export const transactionController = {
     const data = await transactionService.detail(req.user.id, req.params.id);
     res.json(data);
   }),
+
+  review: asyncHandler(async (req, res) => {
+    const data = await transactionService.review(req.user.id, req.params.id, req.body);
+    res.json(data);
+  }),
 };

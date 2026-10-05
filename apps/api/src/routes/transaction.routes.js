@@ -6,4 +6,5 @@ export const transactionRouter = Router();
 
 transactionRouter.use(requireAuth);
 transactionRouter.get('/', transactionController.list);
+transactionRouter.patch('/:id/review', transactionController.review);
 transactionRouter.get('/:id', transactionController.detail);

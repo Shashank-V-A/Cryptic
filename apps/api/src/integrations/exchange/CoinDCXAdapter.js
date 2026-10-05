@@ -12,12 +12,7 @@
  */
 
 import crypto from 'node:crypto';
-import {
-  ExchangeAdapter,
-  CredentialError,
-  ExchangeError,
-  UnsupportedReadError,
-} from './ExchangeAdapter.js';
+import { ExchangeAdapter, CredentialError, ExchangeError } from './ExchangeAdapter.js';
 import { normalizeCoinDcxTrade } from './coindcxNormalize.js';
 
 const BASE_URL = 'https://api.coindcx.com';
@@ -46,6 +41,8 @@ export class CoinDCXAdapter extends ExchangeAdapter {
         info: '/exchange/v1/users/info',
         trades: '/exchange/v1/orders/trade_history',
         activeOrders: '/exchange/v1/orders/active_orders',
+        deposits: '/exchange/v1/transfers/deposits',
+        withdrawals: '/exchange/v1/transfers/withdrawals',
       },
     };
   }
@@ -185,15 +182,32 @@ export class CoinDCXAdapter extends ExchangeAdapter {
     return all.map(normalizeCoinDcxTrade);
   }
 
+  /**
+   * @returns {Promise<Array & { warning?: string }>}
+   */
+  async #fetchTransferList(path, kind) {
+    const empty = [];
+    try {
+      const data = await this.#signedPost(path, { limit: 500 });
+      const rows = Array.isArray(data) ? data : data?.deposits || data?.withdrawals || data?.data;
+      if (!Array.isArray(rows)) {
+        empty.warning = `CoinDCX ${kind} response was not a list — import ${kind} via CSV if needed.`;
+        return empty;
+      }
+      return rows;
+    } catch (err) {
+      empty.warning =
+        err.message ||
+        `CoinDCX ${kind} history unavailable — sync covers trades only; import ${kind} via CSV.`;
+      return empty;
+    }
+  }
+
   async getDeposits() {
-    throw new UnsupportedReadError(
-      'CoinDCX deposit history is not implemented via a verified read endpoint here. Import deposits via CSV.',
-    );
+    return this.#fetchTransferList('/exchange/v1/transfers/deposits', 'deposit');
   }
 
   async getWithdrawals() {
-    throw new UnsupportedReadError(
-      'CoinDCX withdrawal history is not implemented via a verified read endpoint here. Import withdrawals via CSV.',
-    );
+    return this.#fetchTransferList('/exchange/v1/transfers/withdrawals', 'withdrawal');
   }
 }

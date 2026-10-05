@@ -19,6 +19,50 @@ export const userRepository = {
     });
   },
 
+  findByIdForAuth(id) {
+    return prisma.user.findUnique({ where: { id } });
+  },
+
+  updatePassword(id, passwordHash) {
+    return prisma.user.update({
+      where: { id },
+      data: { passwordHash },
+    });
+  },
+
+  setPasswordResetToken(id, passwordResetTokenHash, passwordResetExpiresAt) {
+    return prisma.user.update({
+      where: { id },
+      data: { passwordResetTokenHash, passwordResetExpiresAt },
+    });
+  },
+
+  clearPasswordResetToken(id) {
+    return prisma.user.update({
+      where: { id },
+      data: { passwordResetTokenHash: null, passwordResetExpiresAt: null },
+    });
+  },
+
+  findByPasswordResetTokenHash(hash) {
+    return prisma.user.findFirst({
+      where: {
+        passwordResetTokenHash: hash,
+        passwordResetExpiresAt: { gt: new Date() },
+      },
+    });
+  },
+
+  updateTotp(id, { totpSecretEncrypted, totpEnabled }) {
+    return prisma.user.update({
+      where: { id },
+      data: {
+        ...(totpSecretEncrypted !== undefined ? { totpSecretEncrypted } : {}),
+        ...(totpEnabled !== undefined ? { totpEnabled } : {}),
+      },
+    });
+  },
+
   create({ email, passwordHash, fullName, demoMode = false }) {
     return prisma.user.create({
       data: {

@@ -8,13 +8,18 @@ Expected visual references for VDA Ledger:
 
 ## Status
 
-At project initialization, this folder did not contain image assets. UI implementation follows the written visual direction in the master specification:
+Reference PNGs are **not checked into the repo**. UI follows the written scrapbook / editorial direction:
 
 - Warm cream / off-white surfaces
 - Dark charcoal typography and sidebar
 - Muted botanical green + restrained terracotta accents
 - Editorial serif headlines + clean sans body
 - Subtle paper/editorial texture
-- Premium financial-publication feel (not generic SaaS)
 
-Place reference PNGs here when available so future UI passes can tighten pixel fidelity.
+## How to add references
+
+1. Capture screens from Figma or production/staging.
+2. Drop PNGs into this folder using the names above.
+3. Open a PR noting pixel deltas vs current `apps/web` pages.
+
+Until then, treat spacing/typography audits as token-driven (CSS variables in `packages/ui` + `apps/web/src/index.css`), not pixel-perfect against images.

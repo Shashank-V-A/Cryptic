@@ -54,3 +54,18 @@ describe('CachedPriceProvider', () => {
     assert.equal(calls, 1);
   });
 });
+
+describe('CoinGeckoPriceProvider', () => {
+  it('maps simple/price INR quotes from mocked fetch', async () => {
+    const { CoinGeckoPriceProvider } = await import('./PriceProvider.js');
+    const fetchImpl = async () => ({
+      ok: true,
+      json: async () => ({ bitcoin: { inr: 7000000 } }),
+    });
+    const p = new CoinGeckoPriceProvider({ fetchImpl });
+    const q = await p.getPrice('BTC');
+    assert.equal(q.symbol, 'BTC');
+    assert.ok(q.priceInr.startsWith('7000000'));
+    assert.match(q.source, /coingecko/);
+  });
+});

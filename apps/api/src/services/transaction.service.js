@@ -1,6 +1,15 @@
+import { z } from 'zod';
+import { prisma } from '../lib/prisma.js';
 import { transactionRepository } from '../repositories/transaction.repository.js';
 import { AppError } from '../lib/errors.js';
 import { toDecimal, zero } from '@vda-ledger/financial-engine';
+import { portfolioService } from './portfolio.service.js';
+
+const reviewSchema = z.object({
+  transactionType: z.string().optional(),
+  status: z.enum(['POSTED', 'PENDING', 'NEEDS_REVIEW', 'IGNORED']).optional(),
+  notes: z.string().max(2000).optional(),
+});
 
 export const transactionService = {
   async list(userId, query) {
@@ -106,8 +115,8 @@ export const transactionService = {
       },
       taxTreatment: {
         note:
-          t.transactionType === 'SELL'
-            ? 'Sell may generate VDA income under the applicable TaxRuleSet (Phase 5).'
+          t.transactionType === 'SELL' || t.transactionType === 'SWAP'
+            ? 'Transfer may generate VDA income under the applicable TaxRuleSet.'
             : t.transactionType === 'UNKNOWN'
               ? 'Review required — unknown types are never silently classified for tax.'
               : 'Non-sale ledger event; tax treatment depends on classification and FY rules.',
@@ -123,5 +132,52 @@ export const transactionService = {
         updatedAt: t.updatedAt,
       },
     };
+  },
+
+  async review(userId, id, input) {
+    const data = reviewSchema.parse(input);
+    const existing = await transactionRepository.findByIdForUser(userId, id);
+    if (!existing) {
+      throw new AppError('Transaction not found', { status: 404, code: 'NOT_FOUND' });
+    }
+
+    const needsReview =
+      data.status === 'NEEDS_REVIEW'
+        ? true
+        : data.status && data.status !== 'NEEDS_REVIEW'
+          ? false
+          : undefined;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.transaction.update({
+        where: { id },
+        data: {
+          ...(data.transactionType ? { transactionType: data.transactionType } : {}),
+          ...(data.status ? { status: data.status } : {}),
+          ...(data.notes !== undefined ? { notes: data.notes } : {}),
+        },
+      });
+
+      const metaUpdate = {};
+      if (needsReview !== undefined) metaUpdate.needsReview = needsReview;
+      if (data.notes !== undefined && needsReview === false) {
+        metaUpdate.reviewReason = null;
+      }
+
+      if (Object.keys(metaUpdate).length) {
+        await tx.transactionMetadata.upsert({
+          where: { transactionId: id },
+          update: metaUpdate,
+          create: {
+            transactionId: id,
+            needsReview: metaUpdate.needsReview ?? false,
+            reviewReason: null,
+          },
+        });
+      }
+    });
+
+    await portfolioService.recalculateAndPersistLots(userId);
+    return this.detail(userId, id);
   },
 };

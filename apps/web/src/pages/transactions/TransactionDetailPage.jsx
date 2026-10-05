@@ -1,8 +1,24 @@
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LoadingState, ErrorState, StatusBadge } from '@vda-ledger/ui';
 import { apiFetch } from '../../lib/api.js';
 import { formatInr } from '../../lib/format.js';
+
+const TX_TYPES = [
+  'BUY',
+  'SELL',
+  'TRANSFER_IN',
+  'TRANSFER_OUT',
+  'DEPOSIT',
+  'WITHDRAWAL',
+  'FEE',
+  'REWARD',
+  'AIRDROP',
+  'GIFT',
+  'SWAP',
+  'UNKNOWN',
+];
 
 function Row({ label, value, format = 'text' }) {
   let display = value ?? '—';
@@ -19,11 +35,43 @@ function Row({ label, value, format = 'text' }) {
 
 export function TransactionDetailPage() {
   const { id } = useParams();
+  const queryClient = useQueryClient();
+  const [reviewType, setReviewType] = useState('');
+  const [reviewStatus, setReviewStatus] = useState('POSTED');
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [reviewError, setReviewError] = useState('');
+
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['transaction', id],
     queryFn: () => apiFetch(`/api/transactions/${id}`),
     enabled: Boolean(id),
   });
+
+  const reviewMutation = useMutation({
+    mutationFn: () =>
+      apiFetch(`/api/transactions/${id}/review`, {
+        method: 'PATCH',
+        body: {
+          transactionType: reviewType || undefined,
+          status: reviewStatus,
+          notes: reviewNotes || undefined,
+        },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transaction', id] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+      setReviewError('');
+    },
+    onError: (err) => setReviewError(err.message),
+  });
+
+  useEffect(() => {
+    if (data?.normalized) {
+      setReviewType(data.normalized.type);
+      setReviewStatus(data.normalized.status);
+    }
+  }, [data?.normalized?.type, data?.normalized?.status, id]);
 
   if (isLoading) return <LoadingState label="Loading transaction…" />;
   if (error) {
@@ -31,6 +79,7 @@ export function TransactionDetailPage() {
   }
 
   const n = data.normalized;
+  const needsReview = data.metadata?.needsReview || n.status === 'NEEDS_REVIEW';
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 animate-fade-in">
@@ -68,6 +117,68 @@ export function TransactionDetailPage() {
           <p className="mt-3 text-sm text-[var(--vda-warning)]">{data.metadata.reviewReason}</p>
         ) : null}
       </section>
+
+      {needsReview ? (
+        <section className="rounded-[var(--vda-radius-lg)] border border-[var(--vda-warning)]/40 bg-[var(--vda-terracotta-muted)]/20 p-5">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--vda-ink-muted)]">
+            Review & reclassify
+          </h2>
+          <form
+            className="mt-3 grid gap-3 sm:grid-cols-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              reviewMutation.mutate();
+            }}
+          >
+            <label className="text-sm">
+              <span className="mb-1 block text-[var(--vda-ink-muted)]">Type</span>
+              <select
+                value={reviewType || n.type}
+                onChange={(e) => setReviewType(e.target.value)}
+                className="w-full rounded-[var(--vda-radius)] border border-[var(--vda-border)] bg-[var(--vda-paper)] px-3 py-2"
+              >
+                {TX_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm">
+              <span className="mb-1 block text-[var(--vda-ink-muted)]">Status</span>
+              <select
+                value={reviewStatus}
+                onChange={(e) => setReviewStatus(e.target.value)}
+                className="w-full rounded-[var(--vda-radius)] border border-[var(--vda-border)] bg-[var(--vda-paper)] px-3 py-2"
+              >
+                <option value="POSTED">POSTED</option>
+                <option value="NEEDS_REVIEW">NEEDS_REVIEW</option>
+                <option value="IGNORED">IGNORED</option>
+                <option value="PENDING">PENDING</option>
+              </select>
+            </label>
+            <label className="text-sm sm:col-span-2">
+              <span className="mb-1 block text-[var(--vda-ink-muted)]">Notes</span>
+              <textarea
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                rows={2}
+                className="w-full rounded-[var(--vda-radius)] border border-[var(--vda-border)] bg-[var(--vda-paper)] px-3 py-2"
+              />
+            </label>
+            {reviewError ? (
+              <p className="sm:col-span-2 text-sm text-[var(--vda-negative)]">{reviewError}</p>
+            ) : null}
+            <button
+              type="submit"
+              disabled={reviewMutation.isPending}
+              className="sm:col-span-2 rounded-[var(--vda-radius)] bg-[var(--vda-ink)] px-4 py-2 text-sm font-medium text-[var(--vda-cream)] disabled:opacity-60"
+            >
+              {reviewMutation.isPending ? 'Saving…' : 'Save classification'}
+            </button>
+          </form>
+        </section>
+      ) : null}
 
       <section className="rounded-[var(--vda-radius-lg)] border border-[var(--vda-border)] bg-[var(--vda-surface)] p-5">
         <h2 className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--vda-ink-muted)]">

@@ -20,7 +20,12 @@ function getPriceProvider() {
     } catch {
       redis = null;
     }
-    priceProvider = createPriceProvider({ redis, demoMode: config.demoMode });
+    priceProvider = createPriceProvider({
+      redis,
+      demoMode: config.demoMode,
+      priceApiKey: config.priceApiKey,
+      priceProvider: config.priceProvider,
+    });
   }
   return priceProvider;
 }

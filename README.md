@@ -4,7 +4,7 @@
 
 India-focused crypto portfolio, transaction ledger, analytics, and tax intelligence platform.
 
-> Phase 1 complete: monorepo architecture, PostgreSQL/Prisma schema, session authentication, design system, application shell, and editorial landing page. Financial calculation engines are intentionally stubbed — they throw rather than invent numbers.
+Shipped capabilities include CSV import (preview → confirm → FIFO lots), portfolio P&amp;L with FIFO lot accounting, versioned VDA tax estimation (30% + cess, TDS helpers), PDF/JSON reports (Schedule VDA, crypto tax summary), CoinDCX read-only trade sync, demo seed data, and session-based auth with encrypted exchange credentials.
 
 ## Architecture
 
@@ -12,15 +12,15 @@ India-focused crypto portfolio, transaction ledger, analytics, and tax intellige
 apps/
   web/          React + Vite + Tailwind (UI)
   api/          Express + Prisma (API)
-workers/        BullMQ workers (scaffold)
+workers/        BullMQ workers (exchange sync)
 packages/
   shared/       Constants, FY helpers, disclaimers
   config/       Env loading
-  tax-engine/   Versioned TaxRuleSet registry (calc in Phase 5)
-  financial-engine/  Decimal helpers (P&L in Phase 3)
+  tax-engine/   Versioned TaxRuleSet + calculateVdaTax + Schedule VDA
+  financial-engine/  FIFO lots, CSV import, P&L
   ui/           Shared design tokens + primitives
 docs/           Architecture & domain docs
-design-reference/  Visual references (add PNGs when available)
+design-reference/  Visual references (PNG mocks not included in repo)
 ```
 
 Layering: **Routes → Controllers → Services → Domain → Repositories**
@@ -44,12 +44,15 @@ cp .env.example .env
 docker compose up -d
 ```
 
+Optional full app stack (API + web + workers): see `docker-compose.app.yml`.
+
 ### 3. Install & database
 
 ```bash
 npm install
 npm run db:generate
 npm run db:push
+# or: npm run db:migrate
 npm run db:seed
 ```
 
@@ -61,6 +64,9 @@ npm run dev:api
 
 # Terminal B
 npm run dev:web
+
+# Optional — background jobs (requires Redis)
+npm run dev:workers
 ```
 
 - Web: http://localhost:5173  
@@ -80,12 +86,17 @@ See [.env.example](./.env.example).
 | Variable | Purpose |
 |----------|---------|
 | `DATABASE_URL` | PostgreSQL connection (Docker maps host `5433` → container `5432`) |
-| `REDIS_URL` | Redis (price cache / queues) |
-| `SESSION_SECRET` | Session token hashing salt companion |
+| `REDIS_URL` | Redis (queues, price cache, import previews when available) |
+| `SESSION_SECRET` | Session token hashing |
 | `ENCRYPTION_KEY` | 32-byte hex key for API credential encryption |
+| `CSRF_ENABLED` | Double-submit CSRF protection (on in production) |
+| `COOKIE_SAMESITE` | Session cookie SameSite (`lax` / `strict` / `none`) |
+| `LOG_LEVEL` | API log verbosity |
+| `REPORT_STORAGE` | `local` or `s3` for generated report files |
+| `S3_*` / `AWS_*` | S3-compatible storage when `REPORT_STORAGE=s3` |
+| `PRICE_PROVIDER` | `coingecko`, `mock`, or `stub` market data |
 | `DEMO_MODE` | Marks environment as demo |
-| `COINDCX_API_KEY` / `SECRET` | Read-only only (Phase 8) |
-| `PRICE_API_KEY` | Market data provider (Phase 3) |
+| `COINDCX_API_KEY` / `SECRET` | Read-only CoinDCX sync (optional; CSV always available) |
 
 **Never commit real secrets.**
 
@@ -95,8 +106,7 @@ See [.env.example](./.env.example).
 npm run db:seed
 ```
 
-Seeds: tax years, draft TaxRuleSets, exchange catalog, assets (BTC/ETH/SOL/USDT/INR), demo user.  
-Transaction/portfolio/tax ledger demo data arrives in Phase 2+.
+Seeds tax years, TaxRuleSets (`isDraft` from each rule set), exchange catalog, assets, demo user, and a fictional demo ledger with FIFO lots recalculated via the production portfolio path.
 
 ## CSV import
 
@@ -114,15 +124,19 @@ Sample file: `apps/api/fixtures/sample-coindcx-like.csv`
 
 Unknown types are stored as `UNKNOWN` with **Review Required** — never silently classified.
 
-- Adapter interface: `apps/api/src/integrations/exchange/ExchangeAdapter.js`
-- Live sync is **not faked**. Use CSV import (Phase 2) until Phase 8.
-- Only read permissions. Never trade/withdraw scopes.
+## CoinDCX
 
-## Tax engine
+- Read-only API: balances, user info, trade history sync (paginated).
+- Deposit/withdrawal history is attempted via transfer endpoints when credentials exist; gaps are surfaced in sync metadata — use CSV for missing transfer types.
+- **Binance**: CSV import only (no live adapter yet).
+- Adapter: `apps/api/src/integrations/exchange/CoinDCXAdapter.js`
+
+## Tax engine & reports
 
 - Package: `packages/tax-engine`
-- Rules are versioned (`FY_2025_26_v1`, `FY_2026_27_v1`) and marked **draft** pending official verification.
-- `calculateVdaTax()` throws until Phase 5 — by design.
+- Rules are versioned (`FY_2025_26_v1`, `FY_2026_27_v1`) and may remain **draft** until you verify against official sources.
+- `calculateVdaTax()` produces **Estimated VDA Tax** (not Final Total Income-Tax Liability).
+- Schedule VDA structured export is available for preparation; **`filingReady` is false** — not a certified ITR utility XSD package.
 
 ## Testing
 
@@ -130,7 +144,9 @@ Unknown types are stored as `UNKNOWN` with **Review Required** — never silentl
 npm test
 ```
 
-Phase 1 covers shared FY helpers, tax registry stubs, and landing page render.
+CI (`.github/workflows/ci.yml`): `npm ci`, workspace unit tests, web production build.
+
+Integration-style golden path: `apps/api/src/integrations/goldenPath.test.js` (CSV → FIFO → tax → Schedule VDA, no DB).
 
 ## Documentation
 
@@ -149,11 +165,10 @@ Phase 1 covers shared FY helpers, tax registry stubs, and landing page render.
 - Audit logs for auth events
 - Secrets never logged
 
-## Known limitations (Phase 1)
+## Known limitations
 
-- No CSV import yet (Phase 2)
-- No portfolio/P&L calculations (Phase 3)
-- No live prices (Phase 3)
-- No tax calculation engine (Phase 5)
-- No CoinDCX live sync (Phase 8)
-- Design-reference PNGs were not present at init — UI follows written editorial spec
+- **SIPs** and **tax simulator** UI shells only (Phase placeholders — no persisted SIP execution or full what-if engine).
+- **ITR e-filing**: structured data only; `filingReady=false` on rule sets and ITR-ready packages.
+- **CoinDCX**: trade sync only; deposits/withdrawals may be incomplete — import via CSV when sync warns of gaps.
+- **Binance / Kraken / CoinSwitch**: catalog entries; CSV import unless noted in Settings.
+- **design-reference/** PNG mocks were not present at init — UI follows written editorial spec.

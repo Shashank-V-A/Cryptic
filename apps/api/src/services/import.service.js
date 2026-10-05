@@ -1,13 +1,69 @@
 import { processCsvImport } from '@vda-ledger/financial-engine/csv';
+import { loadApiConfig } from '@vda-ledger/config';
 import { transactionRepository } from '../repositories/transaction.repository.js';
 import { assetRepository } from '../repositories/asset.repository.js';
 import { auditRepository } from '../repositories/audit.repository.js';
 import { portfolioService } from './portfolio.service.js';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../lib/errors.js';
+import { getRedis } from '../lib/redis.js';
 
-/** In-memory preview store for Phase 2 (replace with Redis in production). */
+const PREVIEW_TTL_SEC = 3600;
+
+/** In-memory fallback when Redis is unavailable. */
 const previewStore = new Map();
+
+function previewRedisKey(previewId) {
+  return `import:preview:${previewId}`;
+}
+
+function getPreviewRedis() {
+  try {
+    const config = loadApiConfig();
+    return getRedis(config.redisUrl);
+  } catch {
+    return null;
+  }
+}
+
+async function savePreview(previewId, payload) {
+  const redis = getPreviewRedis();
+  if (redis) {
+    try {
+      await redis.set(previewRedisKey(previewId), JSON.stringify(payload), 'EX', PREVIEW_TTL_SEC);
+      return;
+    } catch {
+      // fall through to memory
+    }
+  }
+  previewStore.set(previewId, payload);
+  setTimeout(() => previewStore.delete(previewId), PREVIEW_TTL_SEC * 1000).unref?.();
+}
+
+async function loadPreview(previewId) {
+  const redis = getPreviewRedis();
+  if (redis) {
+    try {
+      const raw = await redis.get(previewRedisKey(previewId));
+      if (raw) return JSON.parse(raw);
+    } catch {
+      // fall through
+    }
+  }
+  return previewStore.get(previewId) ?? null;
+}
+
+async function deletePreview(previewId) {
+  const redis = getPreviewRedis();
+  if (redis) {
+    try {
+      await redis.del(previewRedisKey(previewId));
+    } catch {
+      // ignore
+    }
+  }
+  previewStore.delete(previewId);
+}
 
 export const importService = {
   async preview(userId, csvText, filename = 'upload.csv') {
@@ -16,16 +72,13 @@ export const importService = {
     const result = processCsvImport(csvText, { existingExternalIds: existingSet });
 
     const previewId = `prev_${userId}_${Date.now()}`;
-    previewStore.set(previewId, {
+    await savePreview(previewId, {
       userId,
       filename,
       createdAt: Date.now(),
       result,
       csvText,
     });
-
-    // Expire after 1 hour
-    setTimeout(() => previewStore.delete(previewId), 60 * 60 * 1000).unref?.();
 
     return {
       previewId,
@@ -38,7 +91,7 @@ export const importService = {
   },
 
   async confirm(userId, previewId) {
-    const preview = previewStore.get(previewId);
+    const preview = await loadPreview(previewId);
     if (!preview || preview.userId !== userId) {
       throw new AppError('Import preview not found or expired', {
         status: 404,
@@ -126,7 +179,7 @@ export const importService = {
       metadata: { inserted: created.length, filename: preview.filename },
     });
 
-    previewStore.delete(previewId);
+    await deletePreview(previewId);
 
     const portfolio = await portfolioService.recalculateAndPersistLots(userId);
 

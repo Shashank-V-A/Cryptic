@@ -86,6 +86,11 @@ export function ExchangesSettingsPage() {
         </Link>
         — live data is never fabricated.
       </p>
+      <p className="text-xs text-[var(--vda-ink-faint)]">
+        <strong>Binance</strong> and other exchanges listed below are <strong>CSV import only</strong>{' '}
+        today — no live read-only sync. CoinDCX supports read-only trade sync; deposit/withdrawal gaps
+        may appear in sync history — use CSV for those rows.
+      </p>
 
       {message ? (
         <p className="rounded border border-[var(--vda-border)] bg-[var(--vda-paper)] px-3 py-2 text-sm">

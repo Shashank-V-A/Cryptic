@@ -13,6 +13,8 @@ export function LoginPage() {
   );
   const [password, setPassword] = useState(import.meta.env.DEV ? 'DemoPass123!' : '');
   const [error, setError] = useState('');
+  const [needsTotp, setNeedsTotp] = useState(false);
+  const [totpCode, setTotpCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   if (!loading && isAuthenticated) {
@@ -24,10 +26,15 @@ export function LoginPage() {
     setError('');
     setSubmitting(true);
     try {
-      await login({ email, password });
+      await login({ email, password, ...(needsTotp || totpCode ? { totpCode } : {}) });
       navigate(location.state?.from || '/dashboard', { replace: true });
     } catch (err) {
-      setError(err.message || 'Unable to sign in');
+      if (err.code === 'TOTP_REQUIRED') {
+        setNeedsTotp(true);
+        setError('Enter the 6-digit code from your authenticator app.');
+      } else {
+        setError(err.message || 'Unable to sign in');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -69,6 +76,21 @@ export function LoginPage() {
               autoComplete="current-password"
             />
           </label>
+          {needsTotp ? (
+            <label className="block text-sm">
+              <span className="mb-1 block text-[var(--vda-ink-soft)]">Authenticator code</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="\d{6}"
+                required
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value)}
+                className="w-full rounded-[var(--vda-radius)] border border-[var(--vda-border)] bg-[var(--vda-paper)] px-3 py-2"
+                autoComplete="one-time-code"
+              />
+            </label>
+          ) : null}
           {error ? (
             <p role="alert" className="text-sm text-[var(--vda-negative)]">
               {error}

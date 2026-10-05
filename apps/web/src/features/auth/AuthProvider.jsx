@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { apiFetch, setUnauthorizedHandler } from '../../lib/api.js';
+import { apiFetch, ensureCsrfToken, setCsrfToken, setUnauthorizedHandler } from '../../lib/api.js';
 
 const AuthContext = createContext(null);
 
@@ -15,6 +15,7 @@ export function AuthProvider({ children }) {
 
   const refresh = useCallback(async () => {
     try {
+      await ensureCsrfToken();
       const data = await apiFetch('/api/me');
       setUser(data.user);
       setMeta({
@@ -44,14 +45,18 @@ export function AuthProvider({ children }) {
   }, [refresh]);
 
   const login = useCallback(async (payload) => {
+    await ensureCsrfToken();
     const data = await apiFetch('/api/auth/login', { method: 'POST', body: payload });
+    if (data.csrfToken) setCsrfToken(data.csrfToken);
     setUser(data.user);
     await refresh();
     return data.user;
   }, [refresh]);
 
   const signup = useCallback(async (payload) => {
+    await ensureCsrfToken();
     const data = await apiFetch('/api/auth/signup', { method: 'POST', body: payload });
+    if (data.csrfToken) setCsrfToken(data.csrfToken);
     setUser(data.user);
     await refresh();
     return data.user;

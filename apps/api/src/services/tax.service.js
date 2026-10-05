@@ -10,7 +10,12 @@ import {
   toDec,
   zero,
 } from '@vda-ledger/tax-engine';
-import { buildLedgerState } from '@vda-ledger/financial-engine';
+import {
+  allocateSaleLots,
+  buildLedgerState,
+  toDecimal,
+  zero as feZero,
+} from '@vda-ledger/financial-engine';
 import { auditRepository } from '../repositories/audit.repository.js';
 import { AppError } from '../lib/errors.js';
 import { portfolioService } from './portfolio.service.js';
@@ -60,7 +65,7 @@ async function loadTransfersForFy(userId, financialYear) {
     where: {
       userId,
       financialYear,
-      transactionType: 'SELL',
+      transactionType: { in: ['SELL', 'SWAP'] },
       status: { in: ['POSTED', 'NEEDS_REVIEW'] },
     },
     include: {
@@ -168,7 +173,7 @@ export const taxService = {
       where: {
         userId,
         financialYear,
-        transactionType: 'SELL',
+        transactionType: { in: ['SELL', 'SWAP'] },
         status: { in: ['POSTED', 'NEEDS_REVIEW'] },
       },
       select: { id: true },
@@ -354,6 +359,92 @@ export const taxService = {
       metadata: { financialYear: breakdown.financialYear, ruleSetId: explanation.ruleSetId },
     });
     return { breakdown, explanation };
+  },
+
+  async simulate(userId, { assetSymbol, quantity, priceInr, financialYear }) {
+    if (!assetSymbol || !quantity || !priceInr || !financialYear) {
+      throw new AppError('assetSymbol, quantity, priceInr, and financialYear are required', {
+        status: 400,
+        code: 'VALIDATION',
+      });
+    }
+
+    await portfolioService.recalculateAndPersistLots(userId).catch(() => {});
+    const txns = await portfolioService.loadNormalizedTransactions(userId);
+    const state = buildLedgerState(txns, { pricesByAsset: {} });
+    const symbol = String(assetSymbol).toUpperCase();
+    const openLots = (state.lotsByAsset.get(symbol) || []).filter((l) =>
+      toDecimal(l.remainingQuantity).gt(0),
+    );
+
+    const qty = toDecimal(String(quantity));
+    const price = toDecimal(String(priceInr));
+    const consideration = price.times(qty);
+
+    let acquisitionCost = feZero();
+    if (openLots.length) {
+      try {
+        const { allocations } = allocateSaleLots(openLots, qty, consideration);
+        for (const a of allocations) {
+          acquisitionCost = acquisitionCost.plus(toDecimal(a.costBasisInr));
+        }
+      } catch (err) {
+        throw new AppError(err.message || 'Insufficient holdings for simulation', {
+          status: 400,
+          code: 'INSUFFICIENT_HOLDINGS',
+        });
+      }
+    }
+
+    const rule = await ensureTaxRule(financialYear);
+    const transfer = {
+      transactionId: 'simulation',
+      timestamp: new Date().toISOString(),
+      assetSymbol: symbol,
+      considerationInr: consideration.toString(),
+      acquisitionCostInr: acquisitionCost.toString(),
+      financialYear,
+    };
+
+    const result = calculateVdaTax({
+      financialYear,
+      ruleSetId: rule.ruleSetId,
+      transfers: [transfer],
+      tdsDeductedInr: '0',
+    });
+
+    const line = result.lines[0];
+    const tdsExpected = calculateExpectedTds({
+      financialYear,
+      payerKind: 'specified_person',
+      events: [
+        {
+          transactionId: 'simulation',
+          considerationInr: consideration.toString(),
+          timestamp: transfer.timestamp,
+        },
+      ],
+    });
+
+    const estimatedTds = tdsExpected.totalExpectedTdsInr;
+    const netProceeds = consideration.minus(toDecimal(line?.estimatedTaxInr || '0'));
+
+    return {
+      simulation: true,
+      financialYear,
+      assetSymbol: symbol,
+      quantity: qty.toString(),
+      priceInr: price.toString(),
+      saleConsiderationInr: line?.considerationInr ?? consideration.toString(),
+      acquisitionCostInr: line?.acquisitionCostInr ?? acquisitionCost.toString(),
+      vdaIncomeInr: line?.taxableIncomeInr ?? '0',
+      estimatedTaxInr: line?.estimatedTaxInr ?? '0',
+      estimatedTdsInr: estimatedTds,
+      estimatedNetProceedsInr: netProceeds.toString(),
+      missingCostBasis: openLots.length === 0,
+      breakdown: line,
+      summary: result.summary,
+    };
   },
 
   async listAudit(userId, { take = 50 } = {}) {

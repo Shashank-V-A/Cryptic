@@ -37,6 +37,13 @@ const DEMO_BASE = {
   USDT: '84.5',
 };
 
+const COINGECKO_IDS = {
+  BTC: 'bitcoin',
+  ETH: 'ethereum',
+  SOL: 'solana',
+  USDT: 'tether',
+};
+
 export class DemoPriceProvider extends PriceProvider {
   constructor(base = DEMO_BASE) {
     super();
@@ -65,10 +72,6 @@ export class DemoPriceProvider extends PriceProvider {
     return out;
   }
 
-  /**
-   * Deterministic synthetic history for charts (no live API).
-   * Walks backward from `to` with mild daily variation around base price.
-   */
   async getHistoricalPrices(asset, { from, to, interval = 'day' } = {}) {
     const symbol = String(asset).toUpperCase();
     const base = this.base[symbol];
@@ -86,9 +89,8 @@ export class DemoPriceProvider extends PriceProvider {
     let cursor = new Date(start);
 
     while (cursor <= end) {
-      // Deterministic wobble from date hash — not random per call
       const day = Math.floor(cursor.getTime() / stepMs);
-      const wobble = ((day % 17) - 8) * 0.004; // ±3.2%
+      const wobble = ((day % 17) - 8) * 0.004;
       const price = baseDec.times(toDecimal(1).plus(wobble));
       points.push({
         asOf: cursor.toISOString(),
@@ -97,7 +99,6 @@ export class DemoPriceProvider extends PriceProvider {
       cursor = new Date(cursor.getTime() + stepMs);
     }
 
-    // Ensure last point is current base
     if (points.length) {
       points[points.length - 1] = {
         asOf: end.toISOString(),
@@ -110,14 +111,98 @@ export class DemoPriceProvider extends PriceProvider {
 }
 
 /**
+ * Live CoinGecko market data (INR). Requires PRICE_API_KEY for higher rate limits;
+ * public demo endpoint works without a key at low volume.
+ */
+export class CoinGeckoPriceProvider extends PriceProvider {
+  /**
+   * @param {{ apiKey?: string, fetchImpl?: typeof fetch }} opts
+   */
+  constructor({ apiKey = '', fetchImpl = globalThis.fetch } = {}) {
+    super();
+    this.apiKey = apiKey;
+    this.fetchImpl = fetchImpl;
+    this.source = apiKey ? 'coingecko' : 'coingecko-public';
+    this.baseUrl = 'https://api.coingecko.com/api/v3';
+  }
+
+  #headers() {
+    const h = { Accept: 'application/json' };
+    if (this.apiKey) h['x-cg-demo-api-key'] = this.apiKey;
+    return h;
+  }
+
+  #id(symbol) {
+    return COINGECKO_IDS[String(symbol).toUpperCase()] || null;
+  }
+
+  async getPrice(asset) {
+    const map = await this.getPrices([asset]);
+    return map[String(asset).toUpperCase()] || null;
+  }
+
+  async getPrices(assets) {
+    const symbols = [...new Set(assets.map((a) => String(a).toUpperCase()))];
+    const ids = symbols.map((s) => this.#id(s)).filter(Boolean);
+    if (!ids.length) return {};
+
+    const url = new URL(`${this.baseUrl}/simple/price`);
+    url.searchParams.set('ids', ids.join(','));
+    url.searchParams.set('vs_currencies', 'inr');
+
+    const res = await this.fetchImpl(url, { headers: this.#headers() });
+    if (!res.ok) {
+      throw new Error(`CoinGecko price fetch failed (${res.status})`);
+    }
+    const data = await res.json();
+    const out = {};
+    const asOf = new Date().toISOString();
+    for (const symbol of symbols) {
+      const id = this.#id(symbol);
+      const inr = id ? data?.[id]?.inr : null;
+      if (inr == null) continue;
+      out[symbol] = {
+        symbol,
+        priceInr: toDecimal(String(inr)).toFixed(12),
+        asOf,
+        source: this.source,
+      };
+    }
+    return out;
+  }
+
+  async getHistoricalPrices(asset, { from, to } = {}) {
+    const id = this.#id(asset);
+    if (!id) return [];
+    const start = new Date(from);
+    const end = new Date(to);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+      return [];
+    }
+
+    const url = new URL(`${this.baseUrl}/coins/${id}/market_chart/range`);
+    url.searchParams.set('vs_currency', 'inr');
+    url.searchParams.set('from', String(Math.floor(start.getTime() / 1000)));
+    url.searchParams.set('to', String(Math.floor(end.getTime() / 1000)));
+
+    const res = await this.fetchImpl(url, { headers: this.#headers() });
+    if (!res.ok) {
+      throw new Error(`CoinGecko history fetch failed (${res.status})`);
+    }
+    const data = await res.json();
+    const prices = Array.isArray(data?.prices) ? data.prices : [];
+    return prices.map(([ms, price]) => ({
+      asOf: new Date(ms).toISOString(),
+      priceInr: toDecimal(String(price)).toFixed(12),
+    }));
+  }
+}
+
+/**
  * In-memory TTL cache wrapping any PriceProvider.
  * Optional Redis client can be injected for shared cache.
  */
 export class CachedPriceProvider extends PriceProvider {
-  /**
-   * @param {PriceProvider} inner
-   * @param {{ ttlMs?: number, redis?: import('ioredis').default | null }} opts
-   */
   constructor(inner, { ttlMs = 30_000, redis = null } = {}) {
     super();
     this.inner = inner;
@@ -219,10 +304,52 @@ export class CachedPriceProvider extends PriceProvider {
   }
 }
 
-export function createPriceProvider({ redis = null, demoMode = true } = {}) {
-  // Live CoinGecko/etc. adapters land when PRICE_API_KEY is configured — never faked as live.
-  const inner = new DemoPriceProvider();
+/**
+ * Prefer live CoinGecko when PRICE_PROVIDER=coingecko (default) and network is available.
+ * Falls back to demo quotes when live fetch fails or provider=demo.
+ */
+export function createPriceProvider({
+  redis = null,
+  demoMode = true,
+  priceApiKey = '',
+  priceProvider = 'coingecko',
+} = {}) {
+  const preferLive = priceProvider !== 'demo' && (!demoMode || priceApiKey || priceProvider === 'coingecko');
+  let inner;
+  if (preferLive && priceProvider !== 'demo') {
+    const live = new CoinGeckoPriceProvider({ apiKey: priceApiKey });
+    const demo = new DemoPriceProvider();
+    inner = {
+      async getPrice(asset) {
+        try {
+          return await live.getPrice(asset);
+        } catch {
+          return demo.getPrice(asset);
+        }
+      },
+      async getPrices(assets) {
+        try {
+          const quotes = await live.getPrices(assets);
+          if (Object.keys(quotes).length) return quotes;
+        } catch {
+          // fall through
+        }
+        return demo.getPrices(assets);
+      },
+      async getHistoricalPrices(asset, range) {
+        try {
+          const points = await live.getHistoricalPrices(asset, range);
+          if (points.length) return points;
+        } catch {
+          // fall through
+        }
+        return demo.getHistoricalPrices(asset, range);
+      },
+    };
+  } else {
+    inner = new DemoPriceProvider();
+  }
   return new CachedPriceProvider(inner, { ttlMs: 30_000, redis });
 }
 
-export { DEMO_BASE };
+export { DEMO_BASE, COINGECKO_IDS };

@@ -34,6 +34,7 @@ export async function requireAuth(req, res, next) {
             email: true,
             fullName: true,
             demoMode: true,
+            totpEnabled: true,
             createdAt: true,
           },
         },

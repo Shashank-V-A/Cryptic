@@ -81,13 +81,18 @@ enum ExchangeSlug {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  fullName     String
-  demoMode     Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                       String    @id @default(cuid())
+  email                    String    @unique
+  passwordHash             String
+  fullName                 String
+  demoMode                 Boolean   @default(false)
+  passwordResetTokenHash   String?
+  passwordResetExpiresAt   DateTime?
+  totpSecretEncrypted      String?
+  totpEnabled              Boolean   @default(false)
+  emailVerifiedAt          DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
   sessions             Session[]
   accounts             Account[]
@@ -106,6 +111,7 @@ model User {
   importBatches        ImportBatch[]
 
   @@index([email])
+  @@index([passwordResetTokenHash])
 }
 
 model Session {

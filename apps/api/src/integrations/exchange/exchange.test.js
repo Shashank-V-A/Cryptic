@@ -113,6 +113,22 @@ describe('CoinDCXAdapter with mocked fetch', () => {
     assert.equal(txns[0].transactionType, 'SELL');
     assert.equal(txns[0].assetSymbol, 'BTC');
   });
+
+  it('soft-fails deposits and withdrawals without throwing', async () => {
+    const fetchImpl = async (url) => {
+      if (url.includes('/transfers/deposits') || url.includes('/transfers/withdrawals')) {
+        return { ok: false, status: 404, text: async () => JSON.stringify({ message: 'not found' }) };
+      }
+      return { ok: true, status: 200, text: async () => '[]' };
+    };
+    const adapter = new CoinDCXAdapter({ apiKey: 'k', apiSecret: 's', fetchImpl });
+    const deposits = await adapter.getDeposits();
+    const withdrawals = await adapter.getWithdrawals();
+    assert.equal(deposits.length, 0);
+    assert.equal(withdrawals.length, 0);
+    assert.ok(deposits.warning);
+    assert.ok(withdrawals.warning);
+  });
 });
 
 describe('CSVAdapter', () => {

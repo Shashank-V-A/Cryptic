@@ -1,3 +1,5 @@
+# PostgreSQL + Redis for local dev. Application images: see docker-compose.app.yml (--profile app).
+
 services:
   postgres:
     image: postgres:16-alpine

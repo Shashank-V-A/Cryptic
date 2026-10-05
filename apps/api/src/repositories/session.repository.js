@@ -21,4 +21,15 @@ export const sessionRepository = {
   deleteByToken(token) {
     return prisma.session.deleteMany({ where: { tokenHash: hashToken(token) } });
   },
+
+  listForUser(userId) {
+    return prisma.session.findMany({
+      where: { userId, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+  },
+
+  deleteByIdForUser(id, userId) {
+    return prisma.session.deleteMany({ where: { id, userId } });
+  },
 };

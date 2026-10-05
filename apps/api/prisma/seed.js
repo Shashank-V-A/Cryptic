@@ -13,7 +13,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('[seed] Starting Phase 1 foundation seed…');
+  console.log('[seed] Starting foundation seed…');
 
   for (const fy of FINANCIAL_YEARS) {
     await prisma.taxYear.upsert({
@@ -178,7 +178,10 @@ async function main() {
   console.log('[seed] Demo transactions:', demoTxns.length);
   console.log('[seed] Holdings:', portfolio.holdings.map((h) => h.assetSymbol).join(', '));
   console.log('[seed] Realized P&L:', portfolio.summary.realizedPnl);
-  console.log('[seed] TaxRuleSets are marked isDraft=true until official verification.');
+  const draftCount = TAX_RULE_SETS.filter((r) => r.isDraft !== false).length;
+  console.log(
+    `[seed] TaxRuleSets seeded (${TAX_RULE_SETS.length} total, ${draftCount} draft per rule.isDraft).`,
+  );
   console.log('[seed] Done. userId=', demoUser.id);
 }
 

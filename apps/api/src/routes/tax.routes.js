@@ -47,6 +47,19 @@ taxRouter.get(
   }),
 );
 
+taxRouter.post(
+  '/simulate',
+  asyncHandler(async (req, res) => {
+    const data = await taxService.simulate(req.user.id, {
+      assetSymbol: req.body?.assetSymbol,
+      quantity: req.body?.quantity,
+      priceInr: req.body?.priceInr,
+      financialYear: req.body?.financialYear,
+    });
+    res.json(data);
+  }),
+);
+
 taxRouter.get(
   '/:financialYear',
   asyncHandler(async (req, res) => {

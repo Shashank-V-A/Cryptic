@@ -328,6 +328,24 @@ export const exchangeService = {
       const fromId = run.connection.lastTradeCursor || null;
       const normalized = await adapter.getTransactions({ fromId });
 
+      let transferGaps = null;
+      if (typeof adapter.getDeposits === 'function' && typeof adapter.getWithdrawals === 'function') {
+        const [deposits, withdrawals] = await Promise.all([
+          adapter.getDeposits(),
+          adapter.getWithdrawals(),
+        ]);
+        transferGaps = {
+          deposits: {
+            fetched: Array.isArray(deposits) ? deposits.length : 0,
+            warning: deposits?.warning || null,
+          },
+          withdrawals: {
+            fetched: Array.isArray(withdrawals) ? withdrawals.length : 0,
+            warning: withdrawals?.warning || null,
+          },
+        };
+      }
+
       const existing = await transactionRepository.findExternalIds(run.userId);
       const existingSet = new Set(existing.map((e) => e.externalTransactionId).filter(Boolean));
 
@@ -388,6 +406,7 @@ export const exchangeService = {
         needsReview,
         lastTradeCursor: lastCursor,
         portfolioHoldings: portfolio?.holdings?.map((h) => h.assetSymbol) || null,
+        ...(transferGaps ? { transferGaps } : {}),
       };
 
       await prisma.syncRun.update({

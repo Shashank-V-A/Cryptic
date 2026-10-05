@@ -1,0 +1,53 @@
+# Application services (optional). Infrastructure: docker compose up -d
+# Full stack: docker compose -f docker-compose.yml -f docker-compose.app.yml --profile app up -d
+
+services:
+  api:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: vda-ledger-api
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://vda:vda_dev_password@postgres:5432/vda_ledger?schema=public
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: vda-ledger-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+  workers:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+    container_name: vda-ledger-workers
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://vda:vda_dev_password@postgres:5432/vda_ledger?schema=public
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy

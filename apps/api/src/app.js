@@ -16,6 +16,9 @@ import { tdsRouter } from './routes/tds.routes.js';
 import { reportRouter } from './routes/report.routes.js';
 import { exchangeRouter } from './routes/exchange.routes.js';
 import { reconciliationRouter } from './routes/reconciliation.routes.js';
+import { sipRouter } from './routes/sip.routes.js';
+import { notificationRouter } from './routes/notification.routes.js';
+import { csrfProtection } from './middleware/csrf.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
 
@@ -34,6 +37,7 @@ export function createApp(config) {
   app.use(express.json({ limit: '5mb' }));
   app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
+  app.use(csrfProtection);
 
   app.use(
     rateLimit({
@@ -56,6 +60,8 @@ export function createApp(config) {
   app.use('/api/reports', reportRouter);
   app.use('/api/exchanges', exchangeRouter);
   app.use('/api/reconciliation', reconciliationRouter);
+  app.use('/api/sips', sipRouter);
+  app.use('/api/notifications', notificationRouter);
 
   app.use(notFound);
   app.use(errorHandler);
