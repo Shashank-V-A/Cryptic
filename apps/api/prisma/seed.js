@@ -121,7 +121,10 @@ async function main() {
   const { DEMO_TRANSACTIONS } = await import('../src/services/demo.service.js');
   const { portfolioService } = await import('../src/services/portfolio.service.js');
 
-  // Reset demo ledger (keep user)
+  // Reset demo ledger (keep user) — drop FK dependents before transactions
+  await prisma.taxCalculation.deleteMany({ where: { userId: demoUser.id } });
+  await prisma.report.deleteMany({ where: { userId: demoUser.id } });
+  await prisma.tdsRecord.deleteMany({ where: { userId: demoUser.id } });
   await prisma.lotAllocation.deleteMany({ where: { sellTransaction: { userId: demoUser.id } } });
   await prisma.acquisitionLot.deleteMany({ where: { userId: demoUser.id } });
   await prisma.portfolioHoldingSnapshot.deleteMany({
@@ -191,5 +194,7 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await prisma.$disconnect().catch(() => {});
+    // Price provider may open Redis — force exit after seed completes
+    process.exit(0);
   });
